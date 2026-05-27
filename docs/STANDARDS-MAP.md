@@ -1,0 +1,30 @@
+# Standards Map — Rustok Org
+
+> Quick reference: which Codex standard applies to which repo.
+> Full standards live in `~/Workspace/Codex/standards/` — read them before coding.
+
+| Repo | Primary Standards | Read Before |
+|------|-------------------|-------------|
+| `core` | [`rust.md`](../../Codex/standards/rust.md) → [`architecture.md`](../../Codex/standards/architecture.md) | Every Rust session |
+| `mobile` | [`react.md`](../../Codex/standards/react.md) → [`typescript.md`](../../Codex/standards/typescript.md) | Every TS/RN session |
+| `mcp` | [`rust.md`](../../Codex/standards/rust.md) | Every Rust session |
+| `llm` | TBD — depends on stack choice | — |
+| `meta` | [`devops.md`](../../Codex/standards/devops.md) | Every infra session |
+| **All** | [`pipeline.md`](../../Codex/standards/pipeline.md) | Every session start |
+
+## Key Decisions (Codex → Rustok)
+
+| Codex Rule | Rustok Override |
+|------------|-----------------|
+| `mod.rs` discouraged (Rust 2024) | **Override:** use `mod.rs` for crate roots (clearer for multi-file modules) |
+| `anyhow` for binaries | **Override:** `thiserror` everywhere (core is lib-first; binaries are thin wrappers) |
+| `reqwest` default TLS | **Override:** custom `rustls` + `webpki-roots` (Android OCSP issue) |
+| React Compiler auto-memo | **Override:** manual `useMemo`/`useCallback` until RN 0.85+ supports React Compiler |
+| Default exports allowed | **Override:** named exports only (Codex agrees, old rustok mixed) |
+| Zustand slices pattern | **Adopt:** old rustok used slices, keep it |
+| `unsafe` with `// SAFETY:` | **Adopt:** strict; seL4-inspired minimal TCB |
+| `cargo-deny` + `cargo-audit` | **Adopt:** already in CI; block copyleft in `core` |
+
+## Old Codebase Analysis
+
+See [`RUSTOK-v1-ANALYSIS.md`](./RUSTOK-v1-ANALYSIS.md) for detailed critique of `~/Workspace/projects/rustok`.
