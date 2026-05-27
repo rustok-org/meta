@@ -25,6 +25,7 @@
 | 2026-05-27 | Created `RUSTOK-v1-ANALYSIS.md` — keep/drop/rewrite from old codebase |
 | 2026-05-27 | Created `AGENTS.md` in all repos — AI session onboarding |
 | 2026-05-27 | **Phase 0: `crates/crypto`** — BIP-39 mnemonic, BIP-32/44 derivation, Secp256k1 signing (EIP-191, EIP-712), golden + property tests, full docs, security hardening (Phrase zeroizes internal Mnemonic), all gates green |
+| 2026-05-27 | **Phase 0: `crates/keyring`** — Argon2id + AES-256-GCM keystore, `LocalKeyring` (encrypted blob + metadata, no signer), unlock returns `PrivateKey` from crypto, import/export, 17 tests (unit + property), all gates green |
 
 ---
 
@@ -32,17 +33,19 @@
 
 | Task | Repo | Blocker |
 |------|------|---------|
-| Phase 0 planning | `meta` | None — ready to start coding |
+| Phase 0: `crates/provider/` | `core` | None — ready to start coding |
 
 ---
 
 ## Next Immediate Steps
 
-1. **Create `crates/keyring/`** — Argon2id + AES-256-GCM keystore encryption
-2. **Create `crates/provider/`** — Multi-chain RPC provider (Alchemy primary)
-3. **Create `crates/txguard/`** — Lightweight rule engine (eth_call + Alchemy simulate)
-4. **Update `core/Cargo.toml`** — add remaining workspace members as crates are created
-5. **Run `cargo deny check`** after each new crate — validate no copyleft deps
+1. **Create `crates/provider/`** — Multi-chain RPC provider (Alchemy primary)
+2. **Create `crates/txguard/`** — Lightweight rule engine (eth_call + Alchemy simulate)
+3. **Create `crates/router/`** — Transaction routing & orchestration
+4. **Create `crates/audit/`** — Static analysis & security checks
+5. **Create `crates/uniffi/`** — FFI bindings for mobile
+6. **Update `core/Cargo.toml`** — add remaining workspace members as crates are created
+7. **Run `cargo deny check`** after each new crate — validate no copyleft deps
 
 ---
 
