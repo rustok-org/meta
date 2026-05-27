@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  mcp:
+    build: ../mcp
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - RUSTOK_AGENT_PASSWORD=${RUSTOK_AGENT_PASSWORD}
+      - MCP_CHAIN_IDS=${MCP_CHAIN_IDS:-421614}
+      - DATA_DIR=/data
+    volumes:
+      - rustok-data:/data
+    restart: unless-stopped
+
+volumes:
+  rustok-data:
