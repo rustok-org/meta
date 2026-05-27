@@ -119,14 +119,16 @@ npm test
 git status
 git log --oneline -5
 
-# 2. Check phase
- cat CLAUDE.md
+# 2. Read project status
+ cat meta/docs/PROJECT-STATUS.md
 
 # 3. Read relevant standard
 # (see STANDARDS-MAP.md)
 
 # 4. Start task
 ```
+
+**At session end:** update `meta/docs/PROJECT-STATUS.md` with what was done and what's next.
 
 ---
 
