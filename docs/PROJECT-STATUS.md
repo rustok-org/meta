@@ -24,6 +24,7 @@
 | 2026-05-27 | Created `STANDARDS-MAP.md` — Codex → repo mapping |
 | 2026-05-27 | Created `RUSTOK-v1-ANALYSIS.md` — keep/drop/rewrite from old codebase |
 | 2026-05-27 | Created `AGENTS.md` in all repos — AI session onboarding |
+| 2026-05-27 | **Phase 0: `crates/crypto`** — BIP-39 mnemonic, BIP-32/44 derivation, Secp256k1 signing (EIP-191, EIP-712), 16 golden tests, all gates green |
 
 ---
 
@@ -37,13 +38,11 @@
 
 ## Next Immediate Steps
 
-1. **Read `~/Workspace/Codex/standards/rust.md`** — refresh Rust rules
-2. **Audit old crypto code** — `~/Workspace/projects/rustok/crates/core/src/keyring/`, `crates/core/src/sign.rs`
-3. **Create `crates/crypto/`** — scaffold crate, define traits
-4. **Implement BIP-39 mnemonic generation** + golden tests (known vectors)
-5. **Implement key derivation** (BIP-32/44) + golden tests
-6. **Implement Secp256k1 signing** + golden tests
-7. **Run `cargo deny check`** — validate no copyleft deps
+1. **Create `crates/keyring/`** — Argon2id + AES-256-GCM keystore encryption
+2. **Create `crates/provider/`** — Multi-chain RPC provider (Alchemy primary)
+3. **Create `crates/txguard/`** — Lightweight rule engine (eth_call + Alchemy simulate)
+4. **Update `core/Cargo.toml`** — add remaining workspace members as crates are created
+5. **Run `cargo deny check`** after each new crate — validate no copyleft deps
 
 ---
 
