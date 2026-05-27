@@ -9,7 +9,7 @@
 
 **Name:** Rustok Org  
 **Mission:** Production-grade self-custody crypto wallet with LLM-first interface.  
-**Status:** Phase 0 (foundation laying)  
+**Status:** Phase 1 — Core Scaffold (~55%)  
 **License:** `core` + `llm` = Proprietary; `mobile` + `mcp` + `meta` = MIT
 
 ---
@@ -75,6 +75,12 @@ npm run typecheck
 npm run lint
 npm test
 ```
+
+### Dependabot & Dependency Updates
+
+- **GitHub Actions:** Dependabot ignores `major` bumps (configured in `.github/dependabot.yml`). Update manually in dedicated CI sprints.
+- **Rust / npm:** Dependabot groups `minor` + `patch` weekly. Merge after green gates.
+- **Security advisories:** `cargo audit` and GitHub Security Alerts take priority — bump immediately, bypass deferral.
 
 ### Commits
 
