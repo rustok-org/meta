@@ -24,7 +24,7 @@
 | 2026-05-27 | Created `STANDARDS-MAP.md` — Codex → repo mapping |
 | 2026-05-27 | Created `RUSTOK-v1-ANALYSIS.md` — keep/drop/rewrite from old codebase |
 | 2026-05-27 | Created `AGENTS.md` in all repos — AI session onboarding |
-| 2026-05-27 | **Phase 0: `crates/crypto`** — BIP-39 mnemonic, BIP-32/44 derivation, Secp256k1 signing (EIP-191, EIP-712), 16 golden tests, all gates green |
+| 2026-05-27 | **Phase 0: `crates/crypto`** — BIP-39 mnemonic, BIP-32/44 derivation, Secp256k1 signing (EIP-191, EIP-712), golden + property tests, full docs, security hardening (Phrase zeroizes internal Mnemonic), all gates green |
 
 ---
 
