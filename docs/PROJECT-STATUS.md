@@ -1,6 +1,6 @@
 # Project Status — Rustok Org
 
-> Updated: 2026-05-30  
+> Updated: 2026-05-31  
 > Read this at session start to understand where we are.
 
 ---
@@ -14,15 +14,15 @@
 | `types/` | ✅ | 7 | DTOs + `CoreError` (9 variants), `AuditEvent` DTOs added |
 | `crypto/` | ✅ | 32 | BIP-39, BIP-32/44, Secp256k1, golden + property tests, low-s normalization, **PrivateKey newtype** |
 | `keyring/` | ✅ | 19 | Argon2id + AES-256-GCM, `LocalKeyring`, import/export, label persistence |
-| `provider/` | ✅ | 14 | Alchemy/Infura/Public, MultiProvider, retry, circuit breaker |
-| `router/` | ✅ | 6 | Builder, preview, execute, broadcast, receipt tracking, **audit integration** |
+| `provider/` | ✅ | 14 | Alchemy/Infura/Public, MultiProvider, retry, circuit breaker, **get_fee_data** |
+| `router/` | ✅ | 9 | Builder, preview, execute, broadcast, receipt tracking, **audit integration**, **gas auto-fetch** |
 | `txguard/` | ✅ | 24 | Parser (ERC-20/721/Permit), rules engine, lightweight simulator |
 | `sign/` | ✅ | 18 | `Signer` trait, `LocalSigner`, `CompositeSigner`, EIP-191/712/legacy/EIP-1559 |
 | `audit/` | ✅ | 4 | SQLite WAL append-only log, router integration (execute + preview) |
 | `uniffi/` | ⏳ | 0 | Placeholder directory, no `Cargo.toml` yet |
 | `mcp-server/` | ⏳ | 0 | Not started — Phase 2 product target |
 
-**Total tests:** 120 passed. All CI gates green (`fmt`, `clippy`, `test`, `deny`, `audit`).
+**Total tests:** 127 passed. All CI gates green (`fmt`, `clippy`, `test`, `deny`, `audit`).
 
 ---
 
@@ -53,6 +53,7 @@
 | 2026-05-30 | **`core/AGENTS.md`** updated to include `audit/`, corrected `router/` description |
 | 2026-05-30 | **`core/docs/PHASE1-HANDOFF.md`** updated — Phase 1 marked complete, 116 tests, next steps defined |
 | 2026-05-30 | **PR #24 (`core`)** — `PrivateKey` newtype struct, zeroization, no `PartialEq`. 4 new unit tests. Security debt closed |
+| 2026-05-30 | **PR #26 (`core`)** — Router gas auto-fetch via `Provider::get_fee_data()`. `FeeData` newtype with `from_gas_price()`. 3 new tests |
 
 ---
 
