@@ -1,6 +1,6 @@
 # Project Status — Rustok Org
 
-> Updated: 2026-05-31  
+> Updated: 2026-05-30  
 > Read this at session start to understand where we are.
 
 ---
@@ -19,6 +19,7 @@
 | `txguard/` | ✅ | 24 | Parser (ERC-20/721/Permit), rules engine, lightweight simulator |
 | `sign/` | ✅ | 18 | `Signer` trait, `LocalSigner`, `CompositeSigner`, EIP-191/712/legacy/EIP-1559 |
 | `audit/` | ✅ | 4 | SQLite WAL append-only log, router integration (execute + preview) |
+| `grpc/` | ✅ | 2 | gRPC server scaffold (PR #28): proto, Tonic, health check, `core-server` binary. Stub impl |
 | `uniffi/` | ⏳ | 0 | Placeholder directory, no `Cargo.toml` yet |
 | `mcp-server/` | ⏳ | 0 | Not started — Phase 2 product target |
 
@@ -54,6 +55,8 @@
 | 2026-05-30 | **`core/docs/PHASE1-HANDOFF.md`** updated — Phase 1 marked complete, 116 tests, next steps defined |
 | 2026-05-30 | **PR #24 (`core`)** — `PrivateKey` newtype struct, zeroization, no `PartialEq`. 4 new unit tests. Security debt closed |
 | 2026-05-30 | **PR #26 (`core`)** — Router gas auto-fetch via `Provider::get_fee_data()`. `FeeData` newtype with `from_gas_price()`. 3 new tests |
+| 2026-05-30 | **PR #28 (`core`)** — gRPC server scaffold: `proto/wallet.proto`, Tonic server, health check, integration tests. `core-server` binary |
+| 2026-05-30 | **PR #30 (`core`)** — `feat/core-docker`: multi-stage Dockerfile, docker-compose (Core + Redis), `.dockerignore`. CI running, merge pending |
 
 ---
 
@@ -61,6 +64,7 @@
 
 | Task | Repo | Blocker |
 |------|------|---------|
+| PR #30 `feat/core-docker` — CI checks | `core` | Awaiting green CI (Format ✅, License ✅, Clippy/Test/Audit/Coverage/Cross pending) |
 | `uniffi` placeholder → real FFI bridge | `core` | Needs `MOBILE-UX-WIREFRAMES.md` + mobile team alignment |
 | Phase 0 docs completion | `meta` | `ALCHEMY-INTEGRATION.md` ✅ exists, `MOBILE-UX-WIREFRAMES.md` ✅ exists — need review |
 
@@ -68,28 +72,24 @@
 
 ## Next Immediate Steps
 
-### Option A: Close Phase 0 formally (recommended)
-1. Review + approve `meta/docs/CORE-API-SPEC.md` and `meta/docs/LLM-ARCHITECTURE.md`
-2. Review `meta/docs/ALCHEMY-INTEGRATION.md` + `meta/docs/MOBILE-UX-WIREFRAMES.md`
-3. Mark Phase 0 as complete
-4. Proceed to Phase 2: LLM Brain scaffold
+### Option A: Merge PR #30, close Phase 1 formally (recommended)
+1. Await green CI on PR #30 → squash merge
+2. Update `PHASE1-HANDOFF.md` — mark Phase 1 complete
+3. Proceed to Phase 2: Gateway (Axum) scaffold
 
-### Option B: Security debt + dependency cleanup ✅ IN PROGRESS
-1. ✅ Fix `PrivateKey` `PartialEq` timing leak (newtype struct) — **PR #24 merged**
-2. Fix `derive_key` error masking (`argon2::Error`)
-3. Evaluate `bip32` / `coins-bip39` upgrade path
-4. Clean `cargo deny` duplicate warnings (`base64`, `block-buffer`, `digest`)
+### Option B: Real gRPC integration (jump ahead)
+1. Wire `WalletService` stub → real `provider` + `router` + `sign` calls
+2. Gate: `grpcurl` returns real balance/address from unlocked keystore
 
-### Option C: Begin Phase 2 LLM Brain
+### Option C: Security debt + dependency cleanup
+1. Fix `derive_key` error masking (`argon2::Error`)
+2. Evaluate `bip32` / `coins-bip39` upgrade path
+3. Clean `cargo deny` duplicate warnings (`base64`, `block-buffer`, `digest`)
+
+### Option D: Begin Phase 2 LLM Brain
 1. Create `rustok-org/llm` repo scaffold
 2. Define Intent JSON schema
-3. Write 50 golden tests for Intent Parser
-4. Scaffold FastAPI + LangGraph (or Rust Rig)
-
-### Option D: Mobile bridge
-1. Create `crates/uniffi/Cargo.toml`
-2. Add `uniffi` to workspace members
-3. Expose minimal FFI: `wallet_create`, `tx_preview`, `tx_execute`
+3. Scaffold FastAPI + LangGraph (or Rust Rig)
 
 ---
 
@@ -122,6 +122,7 @@
 | 2026-05-28 | Security hardening PR #6 + #7, audit Steps 1–5, `provider` + `txguard` scaffold, audit log |
 | 2026-05-29 | `router` + `sign` scaffold, EIP-1559 integration, edition bump 2021→2024, MSRV 1.91 |
 | 2026-05-30 | `audit` crate (PR #21), audit-router integration (PR #22), docs: CORE-API-SPEC + LLM-ARCHITECTURE, AGENTS.md + PHASE1-HANDOFF updated |
+| 2026-05-30 | gRPC server scaffold (PR #28), core-docker (PR #30): Dockerfile + docker-compose + `.dockerignore`. Self-review + review round. CI running |
 
 ---
 
