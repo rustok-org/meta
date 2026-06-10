@@ -41,6 +41,10 @@
 2. **PR-5.2** `feat/observability` — Grafana + Loki + Tempo + Prometheus; OTel tracing Gateway → Core
 3. **PR-5.3** `feat/postgres-migration` (optional)
 
+### Backlog (from review round 2026-06-10, below single-PR threshold)
+- Gateway positive-path tests: needs an in-process tonic test server (`CoreClient` is concrete, not a trait) — verify JSON serialization against proto changes
+- `wallet_context` TTL cache on Gateway — **rejected for now** (tools are called on demand, stale balance risk); revisit with Phase 5 metrics
+
 ### Option B: Phase 5 security debt (deferred from 4.5)
 1. Runtime/RPC unlock (today: startup-unlock only via `UnlockMethod`)
 2. Policy + BudgetTracker (only execute budget-lock landed in 4.5.3)
