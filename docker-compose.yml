@@ -42,12 +42,21 @@ services:
     environment:
       RUSTOK_GATEWAY_ADDR: "0.0.0.0:3000"
       RUSTOK_CORE_ADDR: "http://core:50051"
-      MCP_API_KEY: ${MCP_API_KEY:-}
+      RUSTOK_MCP_API_KEY: ${RUSTOK_MCP_API_KEY:-}
     networks:
       - internal
       - edge
     healthcheck:
-      test: ["CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/localhost/3000"]
+      # Hit /health over /dev/tcp (no curl in the image) and require a
+      # serving Core downstream, not just a bound port.
+      test:
+        - CMD
+        - bash
+        - -c
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/3000 &&
+          printf 'GET /health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          grep -q '"core":"serving"' <&3
       interval: 30s
       timeout: 3s
       start_period: 10s
@@ -60,7 +69,7 @@ services:
     restart: unless-stopped
     depends_on:
       core:
-        condition: service_started
+        condition: service_healthy
 
   mcp:
     build:
@@ -71,10 +80,24 @@ services:
       - "127.0.0.1:3001:3001"
     environment:
       RUSTOK_MCP_HOST: "0.0.0.0"
+      RUSTOK_MCP_PORT: "3001"
       RUSTOK_MCP_GATEWAY_URL: "http://gateway:3000"
-      RUSTOK_MCP_API_KEY: ${MCP_API_KEY:-}
+      RUSTOK_MCP_API_KEY: ${RUSTOK_MCP_API_KEY:-}
     networks:
       - edge
+    healthcheck:
+      # Override the image default to follow the configured port.
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import os, urllib.request;
+          urllib.request.urlopen(f"http://127.0.0.1:{os.environ.get('RUSTOK_MCP_PORT', '3001')}/health", timeout=2)
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
     # Hardening
     read_only: true
     tmpfs:
@@ -83,7 +106,7 @@ services:
     restart: unless-stopped
     depends_on:
       gateway:
-        condition: service_started
+        condition: service_healthy
 
   redis:
     image: redis:7-alpine
