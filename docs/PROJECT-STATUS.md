@@ -1,62 +1,28 @@
 # Project Status — Rustok Org
 
-> Updated: 2026-05-30  
-> Read this at session start to understand where we are.
+> Updated: 2026-06-10  
+> Read this at session start to understand where we are.  
+> Phase numbering follows `core/docs/CORE-MCP-ROADMAP.md` (source of truth for the MVP roadmap).
 
 ---
 
-## Current Phase: Phase 1 — Core Scaffold ✅ COMPLETE
+## Current Phase: MVP Roadmap Phases 0–4.5 ✅ COMPLETE → Phase 5 (Production Hardening) is next
 
-**Goal:** All core crates compile and pass tests. Alchemy integration spec-ready. Cross-compile Android/iOS green.
+**Roadmap goal:** Functional Core + Gateway + MCP Server = minimum viable product.
 
-| Crate | Status | Tests | Note |
-|-------|--------|-------|------|
-| `types/` | ✅ | 7 | DTOs + `CoreError` (9 variants), `AuditEvent` DTOs added |
-| `crypto/` | ✅ | 32 | BIP-39, BIP-32/44, Secp256k1, golden + property tests, low-s normalization, **PrivateKey newtype** |
-| `keyring/` | ✅ | 19 | Argon2id + AES-256-GCM, `LocalKeyring`, import/export, label persistence |
-| `provider/` | ✅ | 14 | Alchemy/Infura/Public, MultiProvider, retry, circuit breaker, **get_fee_data** |
-| `router/` | ✅ | 9 | Builder, preview, execute, broadcast, receipt tracking, **audit integration**, **gas auto-fetch** |
-| `txguard/` | ✅ | 24 | Parser (ERC-20/721/Permit), rules engine, lightweight simulator |
-| `sign/` | ✅ | 18 | `Signer` trait, `LocalSigner`, `CompositeSigner`, EIP-191/712/legacy/EIP-1559 |
-| `audit/` | ✅ | 4 | SQLite WAL append-only log, router integration (execute + preview) |
-| `grpc/` | ✅ | 2 | gRPC server scaffold (PR #28): proto, Tonic, health check, `core-server` binary. Stub impl |
-| `uniffi/` | ⏳ | 0 | Placeholder directory, no `Cargo.toml` yet |
-| `mcp-server/` | ⏳ | 0 | Not started — Phase 2 product target |
+| Phase | Scope | Status |
+|-------|-------|--------|
+| 0 — Core Hardening | PrivateKey newtype, gas oracle, docs | ✅ #24, #26, #27 |
+| 1 — Core as gRPC Service | Tonic server, Dockerfile, compose | ✅ #28/#29, #30 |
+| 2 — Gateway (Axum) | scaffold, Core bridge, rate limit | ✅ #31, #32, #33 |
+| 3 — MCP Server (Python) | scaffold, protocol, capabilities, Gateway client | ✅ mcp #17, #18, #19, #20 |
+| 4 — Event Bus + Audit | Redis Streams publisher, audit consumer | ✅ #34, #36 |
+| 4.5 — Core Real Integration | gRPC stub → real wallet/router/sign/provider | ✅ #38, #40, #41, #42, #43 (plan #39) |
+| 5 — Production Hardening | docker-compose-full, observability, postgres | ⏭ next |
 
-**Total tests:** 127 passed. All CI gates green (`fmt`, `clippy`, `test`, `deny`, `audit`).
+**Core workspace (12 crates):** `types`, `crypto`, `keyring`, `provider`, `router`, `txguard`, `sign`, `audit`, `events`, `wallet`, `gateway`, `grpc` (~190 `#[test]` functions; all gates green at PR #43 merge, 2026-06-03).
 
----
-
-## Completed ✅
-
-| Date | Task |
-|------|------|
-| 2026-05-27 | Created `rustok-org` GitHub organization |
-| 2026-05-27 | Created 5 repos: `core` (private), `mobile`, `mcp`, `llm` (private), `meta` |
-| 2026-05-27 | Pushed initial scaffold to all repos |
-| 2026-05-27 | Hardened CI/CD: concurrency, pinned SHA actions, caching, security audits, coverage |
-| 2026-05-27 | Created `STANDARDS-MAP.md`, `RUSTOK-v1-ANALYSIS.md`, `AGENTS.md` in all repos |
-| 2026-05-27 | **Phase 0: `crates/crypto`** — BIP-39, BIP-32/44, Secp256k1, golden + property tests |
-| 2026-05-27 | **Phase 0: `crates/keyring`** — Argon2id + AES-256-GCM, `LocalKeyring`, 17 tests |
-| 2026-05-28 | **Security Hardening PR #6 (`core`)** — low-s normalization (`EIP-2`), `Seed` timing fix, `subtle` dev-dep |
-| 2026-05-28 | **Security Hardening PR #7 (`core`)** — `aes-gcm` zeroize feature, error masking in keyring |
-| 2026-05-28 | **Security audit Steps 1–5** — 7/9 findings fixed, 2 backlogged. Audit log created |
-| 2026-05-28 | **`crates/provider/` scaffold** — AlchemyProvider, InfuraProvider, PublicRpcProvider, MultiProvider |
-| 2026-05-28 | **`crates/txguard/` scaffold** — parser, rules engine, simulator. 24 tests |
-| 2026-05-28 | **Design doc:** `docs/PROVIDER-DESIGN.md`, `docs/SECURITY-AUDIT-PLAYBOOK.md` |
-| 2026-05-29 | **`crates/router/` scaffold** — builder, preview, execute. `docs/PHASE1-HANDOFF.md` updated |
-| 2026-05-29 | **`crates/sign/` scaffold** — `Signer` trait, `LocalSigner`, `CompositeSigner`. 18 tests |
-| 2026-05-29 | **PR #20** — EIP-1559 signing, gas validation, `keyring::to_signer` integration |
-| 2026-05-29 | **Edition 2021 → 2024**, MSRV 1.85 → 1.91, `reqwest` 0.12 → 0.13 |
-| 2026-05-30 | **`crates/audit/` scaffold (PR #21)** — SQLite WAL, `AuditLog` trait, `SqliteAuditLog`. 4 tests |
-| 2026-05-30 | **Audit-router integration (PR #22)** — `execute` + `preview` log `Success`/`Failed`/`PreviewBlocked` |
-| 2026-05-30 | **Docs updated** — `meta/docs/CORE-API-SPEC.md`, `meta/docs/LLM-ARCHITECTURE.md` enhanced |
-| 2026-05-30 | **`core/AGENTS.md`** updated to include `audit/`, corrected `router/` description |
-| 2026-05-30 | **`core/docs/PHASE1-HANDOFF.md`** updated — Phase 1 marked complete, 116 tests, next steps defined |
-| 2026-05-30 | **PR #24 (`core`)** — `PrivateKey` newtype struct, zeroization, no `PartialEq`. 4 new unit tests. Security debt closed |
-| 2026-05-30 | **PR #26 (`core`)** — Router gas auto-fetch via `Provider::get_fee_data()`. `FeeData` newtype with `from_gas_price()`. 3 new tests |
-| 2026-05-30 | **PR #28 (`core`)** — gRPC server scaffold: `proto/wallet.proto`, Tonic server, health check, integration tests. `core-server` binary |
-| 2026-05-30 | **PR #30 (`core`)** — `feat/core-docker`: multi-stage Dockerfile, docker-compose (Core + Redis), `.dockerignore`. CI running, merge pending |
+**End-to-end chain works with real data:** MCP → Gateway → Core returns real address, balances, `tx_hash`, EIP-191 signatures (Phase 4.5 gate passed).
 
 ---
 
@@ -64,32 +30,30 @@
 
 | Task | Repo | Blocker |
 |------|------|---------|
-| PR #30 `feat/core-docker` — CI checks | `core` | Awaiting green CI (Format ✅, License ✅, Clippy/Test/Audit/Coverage/Cross pending) |
-| `uniffi` placeholder → real FFI bridge | `core` | Needs `MOBILE-UX-WIREFRAMES.md` + mobile team alignment |
-| Phase 0 docs completion | `meta` | `ALCHEMY-INTEGRATION.md` ✅ exists, `MOBILE-UX-WIREFRAMES.md` ✅ exists — need review |
+| — (no active PRs; Phase 5 not started) | | |
 
 ---
 
 ## Next Immediate Steps
 
-### Option A: Merge PR #30, close Phase 1 formally (recommended)
-1. Await green CI on PR #30 → squash merge
-2. Update `PHASE1-HANDOFF.md` — mark Phase 1 complete
-3. Proceed to Phase 2: Gateway (Axum) scaffold
+### Option A: Phase 5 — Production Hardening (roadmap default)
+1. **PR-5.1** `feat/docker-compose-full` — Traefik + Core + Gateway + MCP + Redis; Core in `internal` network; SSL via Let's Encrypt
+2. **PR-5.2** `feat/observability` — Grafana + Loki + Tempo + Prometheus; OTel tracing Gateway → Core
+3. **PR-5.3** `feat/postgres-migration` (optional)
 
-### Option B: Real gRPC integration (jump ahead)
-1. Wire `WalletService` stub → real `provider` + `router` + `sign` calls
-2. Gate: `grpcurl` returns real balance/address from unlocked keystore
+### Option B: Close the MCP read-path gap (PR-3.5)
+1. Gateway: add REST routes `wallet_context` / `get_balance` (gRPC methods already real)
+2. MCP: wire `get_wallet_context` / `get_balances` stubs (`handlers.py`) to Gateway
+3. Gate: Claude Desktop returns a real address and balances
 
-### Option C: Security debt + dependency cleanup
-1. Fix `derive_key` error masking (`argon2::Error`)
-2. Evaluate `bip32` / `coins-bip39` upgrade path
-3. Clean `cargo deny` duplicate warnings (`base64`, `block-buffer`, `digest`)
+### Option C: Phase 5 security debt (deferred from 4.5)
+1. Runtime/RPC unlock (today: startup-unlock only via `UnlockMethod`)
+2. Policy + BudgetTracker (only execute budget-lock landed in 4.5.3)
+3. Keystore file perms `0600`; receipt wait in `router::execute`; parallel balance fetch
 
-### Option D: Begin Phase 2 LLM Brain
-1. Create `rustok-org/llm` repo scaffold
-2. Define Intent JSON schema
-3. Scaffold FastAPI + LangGraph (or Rust Rig)
+### Option D: Begin LLM Brain (separate product line)
+1. Resolve stack decision: Rust (Rig) vs Python (FastAPI + LangChain) — see Deferred Decisions
+2. Define Intent JSON schema; scaffold in `rustok-org/llm`
 
 ---
 
@@ -97,9 +61,10 @@
 
 | Blocker | Impact | Resolution |
 |---------|--------|------------|
-| GitHub Free — no branch protection for private repos (`core`, `llm`) | Can accidentally push to `main` | **Mitigated** — pre-push hook + process discipline. Direct push to main occurred on 2026-05-30 and was reverted. |
-| `simulateAssetChanges` not implemented in provider | Cannot preview swap/stake asset changes | Documented in `meta/docs/ALCHEMY-INTEGRATION.md`. Deferred to Phase 5 or provider v2. |
-| `uniffi` directory is empty | Mobile cannot call core yet | Needs scaffold + `uniffi-bindgen-react-native` setup. Low priority until Phase 4. |
+| GitHub Free — no branch protection for private repos (`core`) | Can accidentally push to `main` | **Mitigated** — pre-push hook + process discipline. |
+| MCP `get_wallet_context` / `get_balances` are stubs | Claude Desktop can preview/execute/sign but not read wallet state | PR-3.5: Gateway REST routes + MCP wiring (Option B). |
+| `uniffi` FFI bridge does not exist (no crate) | Mobile cannot call core | Low priority until Mobile phase. Needs `uniffi-bindgen-react-native` scaffold. |
+| `simulateAssetChanges` not implemented in provider | Cannot preview swap/stake asset changes | Documented in `meta/docs/ALCHEMY-INTEGRATION.md`. Deferred to provider v2. |
 
 ---
 
@@ -107,10 +72,40 @@
 
 | Decision | Options | Status |
 |----------|---------|--------|
-| `llm` stack | Rust (Rig) vs Python (FastAPI + LangChain) | **Under review.** `meta/docs/LLM-ARCHITECTURE.md` recommends Python for prototyping, Rust for v1.0. `meta/AGENTS.md` previously resolved Rust (Rig). Reconcile at Phase 2 kickoff. |
-| React Native version | 0.76 (current) vs latest | **Resolved:** Stay on 0.76 until Phase 4. |
+| `llm` stack | Rust (Rig) vs Python (FastAPI + LangChain) | **Under review.** `meta/docs/LLM-ARCHITECTURE.md` recommends Rust (Rig) with gRPC isolation fallback; reconcile at LLM kickoff. |
+| `llm` repo visibility | AGENTS.md says private; repo is **public** on GitHub | Verify intent — flip visibility or fix docs. |
+| ClawHub/Smithery legacy skill (`temrjan/rustok-wallet`, ~323 downloads) | Keep / republish on Python MCP | **Parked.** Do NOT delete until new MCP is republished. |
+| React Native version | 0.76 (current) vs latest | **Resolved:** Stay on 0.76 until Mobile phase. |
 | Hardware signers | Ledger, Keystone, air-gapped | After core v1.0 |
 | Swap integration | 1inch, 0x, CoW | After txguard v2 + `simulateAssetChanges` |
+
+---
+
+## Completed ✅ (recent — full trail in git history)
+
+| Date | Task |
+|------|------|
+| 2026-05-27 | Org + 5 repos created, CI/CD hardened, `crypto` + `keyring` crates |
+| 2026-05-28 | Security hardening PR #6/#7, audit Steps 1–5, `provider` + `txguard` |
+| 2026-05-29 | `router` + `sign`, EIP-1559, edition 2024, MSRV 1.91 |
+| 2026-05-30 | `audit` crate (#21, #22), PrivateKey newtype (#24), gas auto-fetch (#26), gRPC scaffold (#28), core-docker (#30) |
+| 2026-05-31 | **mcp:** Python FastAPI rewrite — scaffold (#17), protocol + SSE + stdio + tool registry (#18) |
+| 2026-06-01 | **mcp:** capability-based permissions (#19), Gateway HTTP client PR-3.4 (#20), CI bump (#21) |
+| 2026-06-01–02 | **core:** Gateway (Axum) Phase 2 (#31–#33), Event Bus + Audit Phase 4 (#34, #36) |
+| 2026-06-02 | **core:** `crates/wallet` WalletCore (#38), Phase 4.5 plan v2 (#39) |
+| 2026-06-03 | **core:** Phase 4.5 complete — gRPC wired to real WalletCore/router/sign: #40, #41, #42, #43 |
+
+---
+
+## Repo Snapshot
+
+| Repo | Visibility | Stack | State |
+|------|-----------|-------|-------|
+| `core` | Private | Rust 2024 (12 crates) | Phases 0–4.5 done; real gRPC + Axum Gateway |
+| `mcp` | Public | Python 3.12 + FastAPI + uv | Protocol/SSE/stdio/capabilities done; read-path tools stubbed (PR-3.5) |
+| `mobile` | Public | React Native 0.76 + TS | Scaffold only (placeholder App.tsx) |
+| `llm` | Public (docs say private!) | TBD | Scaffold only; stack undecided |
+| `meta` | Public | Docs / Docker | This file + specs |
 
 ---
 
@@ -121,8 +116,12 @@
 | 2026-05-27 | Org creation, repo setup, CI/CD hardening, AGENTS.md, `crypto` + `keyring` complete |
 | 2026-05-28 | Security hardening PR #6 + #7, audit Steps 1–5, `provider` + `txguard` scaffold, audit log |
 | 2026-05-29 | `router` + `sign` scaffold, EIP-1559 integration, edition bump 2021→2024, MSRV 1.91 |
-| 2026-05-30 | `audit` crate (PR #21), audit-router integration (PR #22), docs: CORE-API-SPEC + LLM-ARCHITECTURE, AGENTS.md + PHASE1-HANDOFF updated |
-| 2026-05-30 | gRPC server scaffold (PR #28), core-docker (PR #30): Dockerfile + docker-compose + `.dockerignore`. Self-review + review round. CI running |
+| 2026-05-30 | `audit` crate (PR #21), audit-router integration (PR #22), docs: CORE-API-SPEC + LLM-ARCHITECTURE |
+| 2026-05-30 | gRPC server scaffold (PR #28), core-docker (PR #30) |
+| 2026-05-31–06-01 | **mcp Python rewrite:** scaffold, protocol, SSE/stdio, capabilities, Gateway client (mcp #17–#20) |
+| 2026-06-01–02 | **Gateway (Axum) Phase 2** (#31–#33), **Event Bus + Audit Phase 4** (#34, #36) |
+| 2026-06-02–03 | **Phase 4.5 Core Real Integration:** WalletCore crate + full gRPC wiring (#38–#43) |
+| 2026-06-10 | Workstation re-clone of all repos; docs sync: PROJECT-STATUS, CORE-MCP-ROADMAP, PHASE-4.5-PLAN, core/AGENTS.md |
 
 ---
 

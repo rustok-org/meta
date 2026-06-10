@@ -9,7 +9,7 @@
 
 **Name:** Rustok Org  
 **Mission:** Production-grade self-custody crypto wallet with LLM-first interface.  
-**Status:** Phase 1 — Core Scaffold (~55%)  
+**Status:** MVP roadmap Phases 0–4.5 complete; Phase 5 (Production Hardening) next — see `core/docs/CORE-MCP-ROADMAP.md`  
 **License:** `core` + `llm` = Proprietary; `mobile` + `mcp` + `meta` = MIT
 
 ---
@@ -20,7 +20,7 @@
 |------|-----------|-------|---------|
 | `core` | **Private** | Rust (workspace) | Wallet engine: crypto, keyring, provider, router, txguard, sign, swap |
 | `mobile` | Public | React Native + TypeScript | Primary UI: chat-first wallet interface |
-| `mcp` | Public | Rust | MCP server: HTTP + stdio dual transport |
+| `mcp` | Public | Python (FastAPI + uv) | MCP server: SSE + stdio dual transport |
 | `llm` | **Private** | TBD | LLM agent integration layer |
 | `meta` | Public | Markdown / Docker | Docs, standards, Docker Compose, API specs |
 
