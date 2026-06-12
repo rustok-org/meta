@@ -1,0 +1,44 @@
+# Public TLS entry point for the Rustok stack (docker-compose.prod.yml).
+#
+# {$VAR} placeholders are resolved by Caddy from the container environment;
+# both vars are marked required (`:?`) on the caddy service in the prod override.
+#
+# SSE: no flush tuning needed — Caddy flushes immediately when the upstream
+# responds with `Content-Type: text/event-stream`.
+# https://caddyserver.com/docs/caddyfile/directives/reverse_proxy
+{
+	email {$RUSTOK_ACME_EMAIL}
+
+	# Admin API off: nothing needs it at runtime, and disabling it removes the
+	# in-container reconfiguration surface (review #4).
+	admin off
+
+	servers {
+		# Slowloris defence on the read side. No write/idle cap that would cut
+		# long-lived SSE streams short — Caddy's default write timeout is 0.
+		timeouts {
+			read_header 10s
+		}
+	}
+}
+
+{$RUSTOK_PUBLIC_DOMAIN} {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Content-Security-Policy "default-src 'none'; frame-ancestors 'none'"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		X-XSS-Protection "0"
+		-Server
+	}
+
+	# Cap request bodies — MCP JSON-RPC messages are small; blocks large-POST
+	# abuse (review #7). Raise if a future tool needs bigger payloads.
+	request_body {
+		max_size 1MB
+	}
+
+	reverse_proxy mcp:3001
+}

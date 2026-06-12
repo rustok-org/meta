@@ -1,0 +1,56 @@
+name: Meta CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CADDY_IMAGE: caddy:2.11.4-alpine
+
+jobs:
+  validate:
+    name: Validate compose & Caddyfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: docker compose config (dev base)
+        run: RUSTOK_KEYRING_PASSWORD=ci docker compose -f docker-compose.yml config >/dev/null
+
+      - name: docker compose config (prod overlay)
+        run: |
+          RUSTOK_KEYRING_PASSWORD=ci \
+          RUSTOK_PUBLIC_DOMAIN=ci.example.com \
+          RUSTOK_ACME_EMAIL=ci@example.com \
+          RUSTOK_MCP_API_KEY=ci \
+          RUSTOK_MCP_INBOUND_API_KEY=ci-inbound \
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml config >/dev/null
+
+      - name: prod overlay fails fast without inbound key (D2)
+        run: |
+          if RUSTOK_KEYRING_PASSWORD=ci RUSTOK_PUBLIC_DOMAIN=ci.example.com \
+             RUSTOK_ACME_EMAIL=ci@example.com RUSTOK_MCP_API_KEY=ci \
+             docker compose -f docker-compose.yml -f docker-compose.prod.yml config >/dev/null 2>&1; then
+            echo "ERROR: prod config passed without RUSTOK_MCP_INBOUND_API_KEY"; exit 1
+          fi
+
+      - name: caddy fmt --check
+        run: |
+          docker run --rm -v "$PWD/Caddyfile":/work/Caddyfile:ro "$CADDY_IMAGE" \
+            caddy fmt /work/Caddyfile | diff - Caddyfile
+
+      - name: caddy validate
+        run: |
+          docker run --rm \
+            -e RUSTOK_PUBLIC_DOMAIN=ci.example.com -e RUSTOK_ACME_EMAIL=ci@example.com \
+            -v "$PWD/Caddyfile":/etc/caddy/Caddyfile:ro "$CADDY_IMAGE" \
+            caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
