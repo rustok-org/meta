@@ -74,21 +74,25 @@ jobs:
 
       # Validate the observability config files with their native tools — compose
       # config does not parse bind-mounted file contents (review T1).
+      # Pinned by digest to match docker-compose.obs.yml (supply-chain, review #1).
       - name: validate prometheus config
         run: |
           docker run --rm --entrypoint promtool \
-            -v "$PWD/observability/prometheus.yml":/p.yml:ro prom/prometheus:v3.4.1 \
+            -v "$PWD/observability/prometheus.yml":/p.yml:ro \
+            prom/prometheus:v3.4.1@sha256:9abc6cf6aea7710d163dbb28d8eeb7dc5baef01e38fa4cd146a406dd9f07f70d \
             check config /p.yml
 
       - name: validate alloy config
         run: |
           docker run --rm -v "$PWD/observability/alloy/config.alloy":/c.alloy:ro \
-            grafana/alloy:v1.8.1 fmt /c.alloy >/dev/null
+            grafana/alloy:v1.8.1@sha256:7790f6f7fbd8e4486b4b6c6fc6a7293a73605bb79aaa7f49003cb366943724f6 \
+            fmt /c.alloy >/dev/null
 
       - name: validate tempo config
         run: |
           docker run --rm -v "$PWD/observability/tempo.yaml":/tempo.yaml:ro \
-            grafana/tempo:2.7.0 -config.file=/tempo.yaml -config.verify=true
+            grafana/tempo:2.7.0@sha256:12e904cc509a8e0bd87815e0bc719b6167933bc3f2532716a85811af967780f6 \
+            -config.file=/tempo.yaml -config.verify=true
 
       - name: validate loki + grafana configs
         run: |
