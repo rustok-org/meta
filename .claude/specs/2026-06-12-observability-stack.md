@@ -37,13 +37,19 @@ docker-compose.obs.yml` minimum). Running obs alone fails (no `edge`).
   choices and avoids running a separate collector + shipper. Rejected: separate
   `otel-collector` + `promtail` (two agents for one job); apps exporting directly
   to each backend (N×M coupling).
-- **D2 — Container logs via Alloy reading the Docker socket, read-only.**
-  Self-contained in 5.2a, no app changes. **Security trade-off (from /check):**
-  log discovery needs `/var/run/docker.sock`; a socket-holding container is
-  root-equivalent on the host. Contained by: mounting the socket **`:ro`**,
-  keeping Alloy on the `observability` + `edge` networks but **publishing no
-  host port**, full hardening (`no-new-privileges`, resource limits), and
-  documenting the residual risk. Alternative noted for later: per-service
+- **D2 — Container logs via Alloy reading the Docker socket.**
+  Self-contained in 5.2a, no app changes. **Security trade-off (from /check +
+  Gate-1 review #2):** log discovery needs `/var/run/docker.sock`. A `:ro` mount
+  does **not** meaningfully reduce this — the Docker API is read/write over that
+  socket regardless of the mount flag, so any process reaching it can create/
+  delete containers and gain root on the host. `:ro` is applied as defence-in-
+  depth only, **not** a mitigation. The actual compensating controls are:
+  network isolation (Alloy on `observability` + `edge`, no other reach),
+  resource limits, `no-new-privileges`, and **no published host port** — plus
+  explicit acknowledgement of the residual host-takeover risk if Alloy is
+  compromised. **Follow-up (documented, not this PR):** put a
+  `docker-socket-proxy` in front, whitelisting only the containers/logs APIs, to
+  remove direct socket access. Alternative also noted: per-service
   `logging: driver: loki` (needs the Loki Docker plugin on the host). Apps'
   structured JSON logs (5.2b/c) enrich this later; OTLP-logs from apps are
   deferred to 5.2b/c.
@@ -65,6 +71,17 @@ docker-compose.obs.yml` minimum). Running obs alone fails (no `edge`).
   joins `edge` so apps (on `edge`) can reach it at `alloy:4317`. Backends
   (Tempo/Prometheus/Loki) are on `observability` only — reachable from Alloy and
   Grafana, not from the app network.
+- **D7 — Retention + disk guardrails (Gate-1 review #1).** Single-binary
+  local-storage is fine for single-node now, but bounded so it cannot fill the
+  disk into an incident:
+  - `tempo.yaml`: compactor with `block_retention` (e.g. 7d).
+  - `loki.yaml`: `compactor` with `retention_enabled: true` + `limits_config`
+    `retention_period` (e.g. 7d/168h); `table_manager` retention as needed.
+  - `prometheus.yml`/flags: `--storage.tsdb.retention.time` (e.g. 15d) +
+    `--storage.tsdb.retention.size`.
+  - Document the disk-usage check + manual-purge procedure in the README.
+  - **Migration path:** when multi-node is needed, move Tempo/Loki backends to
+    object storage (S3/MinIO) — noted as a future step, not this PR.
 
 ## PR scope (repo `meta` only)
 
@@ -84,17 +101,25 @@ docker-compose.obs.yml` minimum). Running obs alone fails (no `edge`).
        logs → Loki, label by compose service.
      - `prometheus.yml` — scrape self + Alloy; app targets (`gateway`, `mcp`)
        defined but commented/optional until 5.2b/c expose `/metrics`.
-     - `tempo.yaml`, `loki.yaml` — minimal single-binary local-storage config.
+     - `tempo.yaml`, `loki.yaml` — single-binary local-storage config **with
+       retention/compactor** (D7).
+     - `prometheus.yml` + compose flags — scrape config **with retention
+       time+size** (D7).
      - `grafana/provisioning/datasources/*.yaml` — Prometheus, Loki, Tempo
        (with trace↔log correlation).
-     - `grafana/provisioning/dashboards/*` — a starter "Rustok overview"
-       dashboard (stack health; panels for app metrics render once 5.2b/c land).
+     - `grafana/provisioning/dashboards/*` — a starter **stack-health** dashboard
+       only (Alloy/Tempo/Prometheus/Loki/Grafana up + scrape health). **No empty
+       app panels** — app metrics/panels land in 5.2b/c (Gate-1 review #3).
   3. `.env.example`: add `GF_SECURITY_ADMIN_PASSWORD` (with note + gen hint).
-  4. `README.md`: how to start with the obs overlay (always layered on base, F2),
+  4. `README.md`: how to start with the obs overlay (**always layered on base —
+     `-f docker-compose.yml` minimum, or `edge` is undefined**; suggestion),
      access Grafana via SSH tunnel, the host-level rate-limit setup (nftables +
-     fail2ban examples).
-  5. `.github/workflows/ci.yml`: extend to validate the three-file compose config
-     (passing a dummy `GF_SECURITY_ADMIN_PASSWORD=ci`, F4).
+     fail2ban examples), and the disk-usage check + manual-purge procedure (D7).
+  5. `.github/workflows/ci.yml`: validate the three-file compose config (dummy
+     `GF_SECURITY_ADMIN_PASSWORD=ci`, F4) **and** assert fail-fast without
+     `GF_SECURITY_ADMIN_PASSWORD` (suggestion, mirrors the prod D2 CI step).
+  6. All obs services get `logging: json-file` with rotation (max-size/max-file),
+     consistent with Caddy (suggestion).
 - **Explicitly NOT included:**
   - App instrumentation in `core`/`mcp` (5.2b/c) — no `/metrics`, no OTLP export
     from apps yet; Prometheus app-scrape targets stay commented until then.
@@ -129,8 +154,12 @@ docker-compose.obs.yml` minimum). Running obs alone fails (no `edge`).
 6. Prometheus targets page: self + Alloy UP (app targets intentionally absent
    until 5.2b/c).
 7. README documents the host-level rate-limit (nftables + fail2ban) for the
-   public edge (review #9).
-8. CI validates the three-file compose config.
+   public edge (review #9) and the disk-usage / manual-purge procedure (D7).
+8. CI validates the three-file compose config AND asserts fail-fast without
+   `GF_SECURITY_ADMIN_PASSWORD`.
+9. Retention is configured: `tempo.yaml`/`loki.yaml` compactor + retention,
+   Prometheus `--storage.tsdb.retention.{time,size}` (D7); verifiable in
+   rendered config.
 
 ## Definition of Done
 
@@ -152,8 +181,12 @@ docker-compose.obs.yml` minimum). Running obs alone fails (no `edge`).
 5. `ss -tlnp` confirms only `127.0.0.1:3030` newly bound.
 6. Image digests resolved/pulled; `docker compose pull` succeeds.
 
-## Open questions for Reviewer
+## Resolved at Gate 1 (reviewer)
 
-- Tempo/Loki: single-binary local-storage is fine for now (no S3/object store)?
-- Starter dashboard scope: stack-health only, or also pre-build app panels that
-  stay empty until 5.2b/c?
+- Tempo/Loki single-binary local-storage: OK for single-node now, **with**
+  retention/compactor + documented disk guardrails + object-store migration path
+  (D7).
+- Starter dashboard: **stack-health only**; no empty app panels (review #3).
+- docker.sock: `:ro` is not a mitigation — compensating controls are network
+  isolation + resource limits + no host ports + acknowledged residual risk;
+  docker-socket-proxy is a documented follow-up (D2, review #2).
