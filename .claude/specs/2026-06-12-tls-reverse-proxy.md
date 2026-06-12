@@ -2,32 +2,43 @@
 
 > Roadmap: `core/docs/CORE-MCP-ROADMAP.md` Phase 5, PR-5.1.
 > Base: `meta/docker-compose.yml` (full compose w/o TLS, meta #11/#14).
+> Depends on: MCP inbound auth (mcp #24, merged) — see "D2" below.
 
 ## Goal — one paragraph
 
 Put the public entry point of the stack behind a reverse proxy with automatic
-Let's Encrypt TLS, so a single `docker compose --profile prod up -d` on a server
-serves MCP over HTTPS while Core and Redis stay unreachable from outside.
-Local development flow (`docker compose up -d`, loopback ports, no domain)
-keeps working unchanged.
+Let's Encrypt TLS, so `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d`
+on a server serves MCP over HTTPS while Core and Redis stay unreachable from
+outside. Local development flow (`docker compose up -d`, loopback ports, no
+domain) keeps working unchanged.
 
-## Decision required at Gate 1: Traefik vs Caddy
+## Mechanism (Gate-1 decision, supersedes the original profile approach)
 
-Roadmap PR-5.1 names **Traefik**. Engineer recommends **Caddy** instead:
+The first draft gated Caddy behind a compose **profile** (`--profile prod`).
+Switched to the standard Docker **base + prod-override** pattern after D2 (below)
+showed profiles cannot make an env var required in prod only for a base service
+without also breaking the dev flow. So:
 
-| Criterion | Caddy | Traefik |
-|---|---|---|
-| Codex standard (`devops.md` v1.1) | **primary** for new projects | not covered |
-| Let's Encrypt | built-in, zero config | resolvers + storage config |
-| Config size for 1-2 hosts | ~10-line Caddyfile | static + dynamic labels |
-| Proven in this product | v1 runs Caddy in production | — |
-| Dynamic service discovery | no (not needed: fixed topology) | yes (unused here) |
+- `docker-compose.yml` — dev base, unchanged from today (no Caddy; loopback ports).
+- `docker-compose.prod.yml` — prod override: adds the `caddy` service and makes
+  `RUSTOK_MCP_INBOUND_API_KEY` **required** on the `mcp` service. Run with
+  `-f docker-compose.yml -f docker-compose.prod.yml`.
 
-Traefik's advantage (label-based discovery for many dynamic services) does not
-apply to a fixed topology. The roadmap's actual goal — "SSL via Let's Encrypt,
-Core isolated in `internal` network" — is met by either. **If Reviewer/Captain
-insist on Traefik, only the proxy service block and its config file change;
-the rest of this spec stands.**
+## D2 — inbound auth is a hard prerequisite (from the ESCALATE that froze this PR)
+
+Exposing `mcp:3001` publicly without inbound auth would open the wallet API to
+the internet. MCP inbound bearer auth shipped in mcp #24 (`RUSTOK_MCP_INBOUND_API_KEY`).
+This PR must therefore:
+- pass `RUSTOK_MCP_INBOUND_API_KEY` into the `mcp` service in the prod override,
+  marked **required** (`:?`) so the prod stack refuses to start without it;
+- prove with an acceptance test that an unauthenticated request through Caddy
+  gets `401`.
+
+## Decision (Gate 1, settled): Caddy over Traefik
+
+Roadmap names Traefik; we use **Caddy** (Codex `devops.md` primary, built-in
+Let's Encrypt, ~10-line config, already in v1 production; Traefik's dynamic
+discovery is unused in a fixed topology). Approved at the first Gate 1.
 
 ## Prerequisites (Captain decisions, before/at Gate 1)
 
@@ -46,44 +57,56 @@ the rest of this spec stands.**
 - **Title:** `feat: TLS reverse proxy for public MCP endpoint (PR-5.1)`
 - **Repo:** `meta` only.
 - **Included:**
-  1. `caddy` service in `docker-compose.yml` under the `prod` compose profile
-     (profiles gate whole services; base services stay profile-less and run in
-     both modes):
-     - image pinned to an exact version + digest (review F1:
-       `caddy:2.11.4-alpine@sha256:...`), bumped via Dependabot policy;
-     - ports `80:80`, `443:443`, `443:443/udp` (HTTP/3); `edge` network;
-     - `restart: unless-stopped`, `security_opt: [no-new-privileges:true]`,
-       `read_only: true` with rw named volumes `caddy-data` (certs) and
-       `caddy-config`;
-     - **deviation from service baseline:** runs as image default user (root) —
-       required to bind 80/443; documented inline;
-     - healthcheck via busybox `wget` against the local admin endpoint
-       (`http://127.0.0.1:2019/config/`), OR an inline comment stating why
-       none — decided at implementation, one of the two is mandatory;
-     - `environment: RUSTOK_PUBLIC_DOMAIN: ${RUSTOK_PUBLIC_DOMAIN:?set public domain}`
-       — fail-fast when the profile is up'd without a domain;
-     - `depends_on: mcp: condition: service_healthy` (matches the stack's
-       health-gated startup pattern from meta #14).
-  2. `Caddyfile`:
+  1. `docker-compose.yml` (base) — **revert to the `main` version**: the frozen
+     WIP commit (`4930754`) added a profile-based `caddy` service + the two
+     volumes to this file; drop all of that so base is byte-identical to `main`
+     (dev unchanged, no unused volumes). Loopback publishing of `gateway`
+     (:3000) / `mcp` (:3001) stays as on `main` (`127.0.0.1` unreachable
+     externally).
+  2. `docker-compose.prod.yml` (new) — prod override; declares the
+     `caddy-data` + `caddy-config` top-level volumes here (Compose merges
+     top-level `volumes` across `-f` files, so they stay out of dev):
+     - `caddy` service:
+       - image pinned to version + digest (review F1):
+         `caddy:2.11.4-alpine@sha256:77c07d5ebfa5be9fd6c820d2094ae662c9e7eeb9bf98346b7f639900263ee2a2`,
+         bumped via Dependabot;
+       - ports `80:80`, `443:443`, `443:443/udp` (HTTP/3); `edge` network;
+       - `restart: unless-stopped`; `cap_drop: [ALL]` + `cap_add: [NET_BIND_SERVICE]`;
+         `security_opt: [no-new-privileges:true]`; `read_only: true`;
+         `tmpfs: /tmp`; rw named volumes `caddy-data` (ACME certs) + `caddy-config`.
+         `read_only` is consistent because the official caddy image sets
+         `XDG_CONFIG_HOME=/config` and `XDG_DATA_HOME=/data` (both volumes) —
+         note inline;
+       - **deviation:** no `user:` override — entrypoint starts as root to bind
+         80/443 (no file caps on the binary); compensated by `cap_drop: [ALL]`;
+       - `environment: RUSTOK_PUBLIC_DOMAIN: ${RUSTOK_PUBLIC_DOMAIN:?...}`,
+         `RUSTOK_ACME_EMAIL: ${RUSTOK_ACME_EMAIL:?...}` — fail-fast on prod up;
+       - healthcheck via busybox `wget` on the local admin endpoint
+         `http://127.0.0.1:2019/config/` (admin API is on by default;
+         server-verified per Prerequisite 1);
+       - `depends_on: mcp: condition: service_healthy`.
+     - `mcp` service override — **`environment` key only, no `ports`** (Compose
+       *appends* `ports` across files; re-declaring would duplicate the host
+       binding). Adds
+       `RUSTOK_MCP_INBOUND_API_KEY: ${RUSTOK_MCP_INBOUND_API_KEY:?set inbound key for public exposure}`
+       — **required in prod only** (D2). Dev base does not reference it, so
+       `docker compose up` stays open + warns (mcp behavior). Loopback
+       `127.0.0.1:3001` is inherited from base and kept (unreachable externally).
+  3. `Caddyfile` (new):
      - global options block: `email {$RUSTOK_ACME_EMAIL}`;
      - site block `{$RUSTOK_PUBLIC_DOMAIN}` → `reverse_proxy mcp:3001`;
      - security headers (HSTS, nosniff, frame-deny, hide `Server`).
-     - SSE: confirm against current official Caddy docs that `reverse_proxy`
-       auto-disables buffering for `text/event-stream`; add explicit
-       `flush_interval -1` only if docs require it (no guessing).
-  3. Loopback port publishing of `gateway` (:3000) / `mcp` (:3001) **stays
-     as-is** in the base file. Rationale: `127.0.0.1` binding is unreachable
-     from outside the host in any mode; in `prod` only Caddy binds public
-     ports. Gateway is NOT proxied — its only consumer is MCP over the
-     `edge` docker network.
+     - SSE: Caddy flushes immediately for `Content-Type: text/event-stream`
+       (verified in official `reverse_proxy` docs) — no `flush_interval` needed.
   4. `.env.example` (new): `RUSTOK_PUBLIC_DOMAIN`, `RUSTOK_ACME_EMAIL`,
      `RUSTOK_KEYRING_PASSWORD`, `RUSTOK_ALLOWED_CHAINS`, `RUSTOK_ALCHEMY_API_KEY`,
-     `RUSTOK_MCP_API_KEY` — names + comments, no values.
-  5. `README.md`: dev vs prod usage (two commands), cert storage note
-     (`caddy-data` volume — survives recreation), DNS A-record prerequisite,
-     Let's Encrypt staging-first advice, the v1 port-conflict note.
-  6. `.gitignore`: `# Workflow artifacts` section — `.claude/reports/`,
-     `.review.diff`.
+     `RUSTOK_MCP_API_KEY`, `RUSTOK_MCP_INBOUND_API_KEY` (with `openssl rand -hex 32`
+     hint) — names + comments, no values.
+  5. `README.md`: dev vs prod usage (the two-file prod command), cert storage
+     note (`caddy-data` survives recreation), DNS A-record prerequisite,
+     Let's Encrypt staging-first advice, the v1 port-conflict note, and the
+     required inbound key.
+  6. `.gitignore`: `# Workflow artifacts` section — `.claude/reports/`, `.review.diff`.
 - **Explicitly NOT included:**
   - Observability (PR-5.2), Postgres (PR-5.3).
   - Server provisioning (UFW, fail2ban, DNS records) — README prerequisites only.
@@ -96,7 +119,8 @@ the rest of this spec stands.**
 
 | File | Change |
 |---|---|
-| `docker-compose.yml` | + `caddy` service under `prod` profile |
+| `docker-compose.yml` | reverted to `main` (WIP caddy dropped) — net: no change vs `main` |
+| `docker-compose.prod.yml` | new — caddy service, volumes, required inbound key on mcp |
 | `Caddyfile` | new |
 | `.env.example` | new |
 | `README.md` | dev/prod usage, prerequisites |
@@ -104,23 +128,30 @@ the rest of this spec stands.**
 
 ## Acceptance criteria — "PR is ready when..."
 
-1. `docker compose up -d` (no profile) behaves exactly as today: gateway on
+1. `docker compose up -d` (base only) behaves exactly as today: gateway on
    `127.0.0.1:3000`, MCP on `127.0.0.1:3001`, no caddy container, healthchecks
-   green.
-2. `RUSTOK_PUBLIC_DOMAIN=localhost RUSTOK_ACME_EMAIL=dev@localhost docker
-   compose --profile prod up -d` additionally starts Caddy (localhost → Caddy
-   internal CA); `curl -k https://localhost/health` returns MCP health through
-   the proxy; `curl -kN https://localhost/sse` streams the first SSE event
-   without buffering delay.
-3. Only Caddy binds non-loopback host ports in `prod`; `core`/`redis` publish
-   no ports in any mode (unchanged).
-4. `docker compose config` and `docker compose --profile prod config` are valid;
-   `--profile prod` without `RUSTOK_PUBLIC_DOMAIN` fails with the clear message.
-5. Roadmap gate holds: full stack up < 30 s (excluding image builds).
+   green, no inbound key required.
+2. `RUSTOK_PUBLIC_DOMAIN=localhost RUSTOK_ACME_EMAIL=dev@localhost
+   RUSTOK_MCP_INBOUND_API_KEY=$(openssl rand -hex 32)
+   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d` starts
+   Caddy (localhost → internal CA); `curl -k https://localhost/health` returns
+   MCP health through the proxy; `curl -kN https://localhost/mcp/sse` (with a
+   valid bearer token) streams the first SSE event without buffering delay.
+3. **D2:** through Caddy, `GET /mcp/sse` (or `POST /mcp/message`) without a
+   bearer token → `401`; with `Authorization: Bearer $RUSTOK_MCP_INBOUND_API_KEY`
+   → passes.
+4. **D2:** the prod stack refuses to start without `RUSTOK_MCP_INBOUND_API_KEY`
+   (compose `:?` error); likewise without `RUSTOK_PUBLIC_DOMAIN`.
+5. Only Caddy binds non-loopback host ports in prod; `core`/`redis` publish no
+   ports in any mode.
+6. `docker compose config` (base) and `docker compose -f docker-compose.yml -f
+   docker-compose.prod.yml config` are both valid.
+7. Roadmap gate holds: full stack up < 30 s (excluding image builds).
 
-If Docker stays unavailable on the workstation (Prerequisite 1), criteria 1–2
-and 5 are verified on the target server before merge, and the Gate 2 report
-says so explicitly.
+If Docker stays unavailable on the workstation (Prerequisite 1), criteria 1–7
+that need a running stack are verified on the target server before merge, and
+the Gate 2 report says so explicitly. `docker compose config` lint (criterion 6)
+is runnable wherever a compose binary exists.
 
 ## Definition of Done
 
@@ -131,11 +162,16 @@ says so explicitly.
 
 ## Test plan
 
-1. `docker compose config` for both modes — valid; expected port/service sets
-   (criterion 4).
-2. Dev mode smoke: existing healthchecks green; `curl 127.0.0.1:3001/health` OK.
-3. Prod mode locally with `localhost` domain: criterion 2 (health + SSE via
-   proxy); `ss -tlnp` shows only Caddy on 80/443.
-4. Negative: missing `RUSTOK_PUBLIC_DOMAIN` → fail-fast message (criterion 4).
-5. Real Let's Encrypt issuance is not locally testable — verified at deploy
+1. `docker compose config` (base) and `... -f docker-compose.prod.yml config` —
+   both valid; expected port/service sets (criterion 6).
+2. Dev mode smoke: existing healthchecks green; `curl 127.0.0.1:3001/health` OK;
+   no inbound key needed (criterion 1).
+3. Prod mode locally with `localhost` domain + a generated inbound key:
+   criterion 2 (health + SSE via proxy); `ss -tlnp` shows only Caddy on 80/443
+   (criterion 5).
+4. D2 auth through proxy: `curl -k https://localhost/mcp/sse` without token →
+   401; with `-H "Authorization: Bearer $KEY"` → not 401 (criterion 3).
+5. Negative / D2: prod up without `RUSTOK_MCP_INBOUND_API_KEY` → compose `:?`
+   error; without `RUSTOK_PUBLIC_DOMAIN` → `:?` error (criterion 4).
+6. Real Let's Encrypt issuance is not locally testable — verified at deploy
    time (staging endpoint first), per README.
