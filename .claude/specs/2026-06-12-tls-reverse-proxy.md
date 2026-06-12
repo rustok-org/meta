@@ -49,6 +49,8 @@ the rest of this spec stands.**
   1. `caddy` service in `docker-compose.yml` under the `prod` compose profile
      (profiles gate whole services; base services stay profile-less and run in
      both modes):
+     - image pinned to an exact version + digest (review F1:
+       `caddy:2.11.4-alpine@sha256:...`), bumped via Dependabot policy;
      - ports `80:80`, `443:443`, `443:443/udp` (HTTP/3); `edge` network;
      - `restart: unless-stopped`, `security_opt: [no-new-privileges:true]`,
        `read_only: true` with rw named volumes `caddy-data` (certs) and
