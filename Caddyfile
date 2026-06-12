@@ -1,0 +1,23 @@
+# Public TLS entry point for the Rustok stack (compose `prod` profile).
+#
+# {$VAR} placeholders are resolved by Caddy from the container environment;
+# both vars are enforced as required in docker-compose.yml.
+#
+# SSE: no flush tuning needed — Caddy flushes immediately when the upstream
+# responds with `Content-Type: text/event-stream`.
+# https://caddyserver.com/docs/caddyfile/directives/reverse_proxy
+
+{
+	email {$RUSTOK_ACME_EMAIL}
+}
+
+{$RUSTOK_PUBLIC_DOMAIN} {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		-Server
+	}
+
+	reverse_proxy mcp:3001
+}
