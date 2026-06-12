@@ -54,3 +54,20 @@ jobs:
             -e RUSTOK_PUBLIC_DOMAIN=ci.example.com -e RUSTOK_ACME_EMAIL=ci@example.com \
             -v "$PWD/Caddyfile":/etc/caddy/Caddyfile:ro "$CADDY_IMAGE" \
             caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
+      - name: docker compose config (obs overlay)
+        run: |
+          RUSTOK_KEYRING_PASSWORD=ci \
+          RUSTOK_PUBLIC_DOMAIN=ci.example.com \
+          RUSTOK_ACME_EMAIL=ci@example.com \
+          RUSTOK_MCP_API_KEY=ci \
+          RUSTOK_MCP_INBOUND_API_KEY=ci-inbound \
+          GF_SECURITY_ADMIN_PASSWORD=ci \
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.obs.yml config >/dev/null
+
+      - name: obs overlay fails fast without GF_SECURITY_ADMIN_PASSWORD
+        run: |
+          if RUSTOK_KEYRING_PASSWORD=ci \
+             docker compose -f docker-compose.yml -f docker-compose.obs.yml config >/dev/null 2>&1; then
+            echo "ERROR: obs config passed without GF_SECURITY_ADMIN_PASSWORD"; exit 1
+          fi

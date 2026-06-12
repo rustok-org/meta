@@ -1,0 +1,24 @@
+# Prometheus scrape config. Retention is set via flags in docker-compose.obs.yml
+# (--storage.tsdb.retention.{time,size}). Remote-write receiver is enabled via
+# flag so Alloy can push OTLP-derived metrics here.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: alloy
+    static_configs:
+      - targets: ["alloy:12345"] # Alloy's own /metrics
+
+  # App targets land in PR-5.2b/c once gateway/mcp expose /metrics:
+  # - job_name: gateway
+  #   static_configs:
+  #     - targets: ["gateway:3000"]
+  # - job_name: mcp
+  #   static_configs:
+  #     - targets: ["mcp:3001"]

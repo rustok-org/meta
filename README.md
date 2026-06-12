@@ -56,9 +56,9 @@ $RUSTOK_MCP_INBOUND_API_KEY`. See `.env.example` for all variables.
   with the existing proxy.
 - **Rate limiting (required before go-live):** Caddy terminates TLS and proxies
   straight to MCP, so the Gateway's own rate limiting does NOT protect the public
-  edge. Until proxy-level rate limiting lands in PR-5.2, add a host-level guard
-  before exposing the endpoint — per-IP limits via `nftables`/`iptables` or
-  `fail2ban` on the Caddy access log. Do not skip this step.
+  edge. The control is host-level (a Caddy rate-limit plugin needs a custom
+  `xcaddy` build, which breaks the pinned image — deferred). Set this up before
+  exposing the endpoint; see **Edge rate limiting** below. Do not skip it.
 
 ### Deploy checklist (before first public start)
 
@@ -72,3 +72,77 @@ $RUSTOK_MCP_INBOUND_API_KEY`. See `.env.example` for all variables.
 6. Switch to the production CA; redeploy; re-verify.
 7. Smoke the full chain with a real client: `Authorization: Bearer
    $RUSTOK_MCP_INBOUND_API_KEY` against `/mcp/sse` streams events.
+
+## Observability (optional overlay)
+
+Adds Grafana Alloy (OTLP ingest + log shipping) → Tempo / Prometheus / Loki,
+surfaced in Grafana. **Always layered on the base file** (it needs the `edge`
+network) — `-f docker-compose.yml` is the minimum, or add it as a third file on
+top of prod:
+
+```bash
+GF_SECURITY_ADMIN_PASSWORD=$(openssl rand -hex 16) \
+RUSTOK_KEYRING_PASSWORD=... \
+  docker compose -f docker-compose.yml -f docker-compose.obs.yml up -d
+# production:
+GF_SECURITY_ADMIN_PASSWORD=... RUSTOK_KEYRING_PASSWORD=... RUSTOK_PUBLIC_DOMAIN=... \
+RUSTOK_ACME_EMAIL=... RUSTOK_MCP_API_KEY=... RUSTOK_MCP_INBOUND_API_KEY=... \
+  docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.obs.yml up -d
+```
+
+- Nothing here is public: only Grafana binds `127.0.0.1:3030`. Reach it from a
+  workstation over an **SSH tunnel**:
+  `ssh -N -L 3030:127.0.0.1:3030 user@host`, then open `http://localhost:3030`
+  (login `admin` / `$GF_SECURITY_ADMIN_PASSWORD`).
+- App metrics/traces start flowing once PR-5.2b (core) and PR-5.2c (mcp) export
+  to `alloy:4317`. This PR ships the backend + container-log shipping only.
+- **Docker socket:** Alloy mounts `/var/run/docker.sock` to discover container
+  logs. A `:ro` mount does not restrict the Docker API — a compromised Alloy is
+  root-equivalent on the host. It is contained by network isolation, no public
+  port, resource limits, and `no-new-privileges`. Hardening follow-up: front it
+  with a `docker-socket-proxy` (whitelist containers/logs only).
+
+### Retention & disk usage
+
+Local single-binary storage is bounded so it cannot fill the disk:
+Tempo `block_retention` 7d, Loki `retention_period` 7d (compactor on),
+Prometheus `--storage.tsdb.retention.time=15d --retention.size=5GB`. Multi-node
+later → move Tempo/Loki to object storage (S3/MinIO).
+
+Check usage and purge if needed:
+
+```bash
+docker system df -v | grep -E 'tempo-data|loki-data|prometheus-data'   # volume sizes
+# manual purge (stops obs, drops its volumes — telemetry only, not app data):
+docker compose -f docker-compose.yml -f docker-compose.obs.yml down
+docker volume rm meta_tempo-data meta_loki-data meta_prometheus-data
+```
+
+### Edge rate limiting (set up before public exposure, review #9)
+
+Caddy proxies straight to MCP, so apply per-IP limits at the host.
+
+`nftables` — cap new connections per source IP on 443:
+
+```
+table inet rustok {
+    chain input {
+        type filter hook input priority 0; policy accept;
+        tcp dport 443 ct state new meter conns { ip saddr limit rate 20/second burst 40 packets } accept
+        tcp dport 443 ct state new drop
+    }
+}
+```
+
+`fail2ban` — ban IPs hammering the Caddy access log (jail sketch):
+
+```
+[caddy-mcp]
+enabled  = true
+port     = https
+filter   = caddy-mcp        # matches repeated 401/429 in the Caddy JSON access log
+logpath  = /var/log/caddy/access.log
+maxretry = 20
+findtime = 60
+bantime  = 3600
+```
