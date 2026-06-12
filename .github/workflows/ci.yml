@@ -54,3 +54,57 @@ jobs:
             -e RUSTOK_PUBLIC_DOMAIN=ci.example.com -e RUSTOK_ACME_EMAIL=ci@example.com \
             -v "$PWD/Caddyfile":/etc/caddy/Caddyfile:ro "$CADDY_IMAGE" \
             caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
+      - name: docker compose config (obs overlay)
+        run: |
+          RUSTOK_KEYRING_PASSWORD=ci \
+          RUSTOK_PUBLIC_DOMAIN=ci.example.com \
+          RUSTOK_ACME_EMAIL=ci@example.com \
+          RUSTOK_MCP_API_KEY=ci \
+          RUSTOK_MCP_INBOUND_API_KEY=ci-inbound \
+          GF_SECURITY_ADMIN_PASSWORD=ci \
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.obs.yml config >/dev/null
+
+      - name: obs overlay fails fast without GF_SECURITY_ADMIN_PASSWORD
+        run: |
+          if RUSTOK_KEYRING_PASSWORD=ci \
+             docker compose -f docker-compose.yml -f docker-compose.obs.yml config >/dev/null 2>&1; then
+            echo "ERROR: obs config passed without GF_SECURITY_ADMIN_PASSWORD"; exit 1
+          fi
+
+      # Validate the observability config files with their native tools — compose
+      # config does not parse bind-mounted file contents (review T1).
+      # Pinned by digest to match docker-compose.obs.yml (supply-chain, review #1).
+      - name: validate prometheus config
+        run: |
+          docker run --rm --entrypoint promtool \
+            -v "$PWD/observability/prometheus.yml":/p.yml:ro \
+            prom/prometheus:v3.4.1@sha256:9abc6cf6aea7710d163dbb28d8eeb7dc5baef01e38fa4cd146a406dd9f07f70d \
+            check config /p.yml
+
+      - name: validate alloy config
+        run: |
+          docker run --rm -v "$PWD/observability/alloy/config.alloy":/c.alloy:ro \
+            grafana/alloy:v1.8.1@sha256:7790f6f7fbd8e4486b4b6c6fc6a7293a73605bb79aaa7f49003cb366943724f6 \
+            fmt /c.alloy >/dev/null
+
+      - name: validate tempo config
+        run: |
+          docker run --rm -v "$PWD/observability/tempo.yaml":/tempo.yaml:ro \
+            grafana/tempo:2.7.0@sha256:12e904cc509a8e0bd87815e0bc719b6167933bc3f2532716a85811af967780f6 \
+            -config.file=/tempo.yaml -config.verify=true
+
+      - name: validate loki + grafana configs
+        run: |
+          python3 -c "import yaml; yaml.safe_load(open('observability/loki.yaml'))"
+          python3 - <<'PY'
+          import json, glob, re
+          uids = set(re.findall(r'uid:\s*(\w+)',
+                     open('observability/grafana/provisioning/datasources/datasources.yaml').read()))
+          for f in glob.glob('observability/grafana/provisioning/dashboards/*.json'):
+              json.load(open(f))  # JSON syntax
+              used = set(re.findall(r'"uid":\s*"(\w+)"', open(f).read()))
+              unknown = used - uids
+              assert not unknown, f"{f}: unknown datasource uids {unknown}"
+          print("grafana provisioning OK")
+          PY

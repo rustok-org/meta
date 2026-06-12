@@ -1,0 +1,76 @@
+// Grafana Alloy — single observability agent for the Rustok stack.
+//
+// Roles:
+//   1. OTLP ingest (gRPC 4317 / HTTP 4318) from apps (wired in PR-5.2b/c)
+//      -> traces to Tempo, metrics to Prometheus (remote-write).
+//   2. Tail container logs via the Docker socket -> Loki.
+//
+// SECURITY: this agent mounts the Docker socket. A `:ro` mount does NOT limit
+// the Docker API — a compromised Alloy is root-equivalent on the host. The
+// compensating controls live in docker-compose.obs.yml (network isolation, no
+// published port, resource limits, no-new-privileges). A docker-socket-proxy is
+// a documented follow-up.
+
+// ---- OTLP ingest from applications (5.2b/c) ----
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "0.0.0.0:4317"
+	}
+	http {
+		endpoint = "0.0.0.0:4318"
+	}
+	output {
+		traces  = [otelcol.exporter.otlp.tempo.input]
+		metrics = [otelcol.exporter.prometheus.default.input]
+	}
+}
+
+otelcol.exporter.otlp "tempo" {
+	client {
+		endpoint = "tempo:4317"
+		tls {
+			insecure = true // in-cluster traffic on the observability network
+		}
+	}
+}
+
+otelcol.exporter.prometheus "default" {
+	forward_to = [prometheus.remote_write.default.receiver]
+}
+
+prometheus.remote_write "default" {
+	endpoint {
+		url = "http://prometheus:9090/api/v1/write"
+	}
+}
+
+// ---- Container logs -> Loki ----
+discovery.docker "containers" {
+	host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "containers" {
+	targets = discovery.docker.containers.targets
+
+	rule {
+		source_labels = ["__meta_docker_container_name"]
+		regex         = "/(.*)"
+		target_label  = "container"
+	}
+	rule {
+		source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+		target_label  = "service"
+	}
+}
+
+loki.source.docker "containers" {
+	host       = "unix:///var/run/docker.sock"
+	targets    = discovery.relabel.containers.output
+	forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
+}
