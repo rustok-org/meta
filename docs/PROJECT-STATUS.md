@@ -1,6 +1,6 @@
 # Project Status — Rustok Org
 
-> Updated: 2026-06-10  
+> Updated: 2026-06-12  
 > Read this at session start to understand where we are.  
 > Phase numbering follows `core/docs/CORE-MCP-ROADMAP.md` (source of truth for the MVP roadmap).
 
@@ -18,7 +18,7 @@
 | 3 — MCP Server (Python) | scaffold, protocol, capabilities, Gateway client | ✅ mcp #17, #18, #19, #20; read path (PR-3.5) ✅ mcp #22 + core #44 |
 | 4 — Event Bus + Audit | Redis Streams publisher, audit consumer | ✅ #34, #36 |
 | 4.5 — Core Real Integration | gRPC stub → real wallet/router/sign/provider | ✅ #38, #40, #41, #42, #43 (plan #39) |
-| 5 — Production Hardening | docker-compose-full, observability, postgres | 🔄 started — full compose w/o TLS ✅ meta #11; Traefik/SSL, observability, postgres pending |
+| 5 — Production Hardening | docker-compose-full, observability, postgres | 🔄 in progress — full compose ✅ meta #11; MCP inbound auth ✅ mcp #24; **Caddy TLS reverse proxy ✅ (PR-5.1, this PR)**; observability + postgres pending |
 
 **Core workspace (12 crates):** `types`, `crypto`, `keyring`, `provider`, `router`, `txguard`, `sign`, `audit`, `events`, `wallet`, `gateway`, `grpc` (~190 `#[test]` functions; all gates green at PR #43 merge, 2026-06-03).
 
@@ -37,8 +37,13 @@
 ## Next Immediate Steps
 
 ### Option A: Finish Phase 5 — Production Hardening (roadmap default)
-1. **PR-5.1 remainder** — Traefik reverse proxy + SSL (Let's Encrypt) on top of `meta/docker-compose.yml` (full compose w/o TLS merged: meta #11)
-2. **PR-5.2** `feat/observability` — Grafana + Loki + Tempo + Prometheus; OTel tracing Gateway → Core
+1. ~~**PR-5.1 remainder** — reverse proxy + SSL~~ ✅ **done** — Caddy TLS overlay
+   (`docker-compose.prod.yml`), inbound auth required in prod (mcp #24). Real
+   Let's Encrypt issuance + host-level rate limiting are deploy-time steps
+   (README deploy checklist).
+2. **PR-5.2** `feat/observability` — Grafana + Loki + Tempo + Prometheus; OTel
+   tracing Gateway → Core. **Carries forward:** proxy-level / host rate limiting
+   for the public TLS edge (PR-5.1 review #9).
 3. **PR-5.3** `feat/postgres-migration` (optional)
 
 ### Backlog (from review round 2026-06-10, below single-PR threshold)

@@ -25,14 +25,15 @@ ports. MCP inbound auth is disabled (it logs a warning) — fine for loopback.
 RUSTOK_KEYRING_PASSWORD=... \
 RUSTOK_PUBLIC_DOMAIN=wallet.example.com \
 RUSTOK_ACME_EMAIL=ops@example.com \
+RUSTOK_MCP_API_KEY=... \
 RUSTOK_MCP_INBOUND_API_KEY=$(openssl rand -hex 32) \
   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
 Caddy is the only service binding public ports (80/443, plus 443/udp for HTTP/3)
 and obtains a Let's Encrypt certificate automatically. The prod overlay refuses
-to start if `RUSTOK_PUBLIC_DOMAIN`, `RUSTOK_ACME_EMAIL`, or
-`RUSTOK_MCP_INBOUND_API_KEY` is unset.
+to start if `RUSTOK_PUBLIC_DOMAIN`, `RUSTOK_ACME_EMAIL`, `RUSTOK_MCP_API_KEY`
+(MCP↔Gateway), or `RUSTOK_MCP_INBOUND_API_KEY` (client→MCP) is unset.
 
 Clients reach MCP over HTTPS and must send `Authorization: Bearer
 $RUSTOK_MCP_INBOUND_API_KEY`. See `.env.example` for all variables.
@@ -53,3 +54,21 @@ $RUSTOK_MCP_INBOUND_API_KEY`. See `.env.example` for all variables.
 - **Port conflict:** the v1 monolith's Caddy already binds 80/443 on
   `api.rustokwallet.com`. Deploy the org stack on a dedicated host or integrate
   with the existing proxy.
+- **Rate limiting (required before go-live):** Caddy terminates TLS and proxies
+  straight to MCP, so the Gateway's own rate limiting does NOT protect the public
+  edge. Until proxy-level rate limiting lands in PR-5.2, add a host-level guard
+  before exposing the endpoint — per-IP limits via `nftables`/`iptables` or
+  `fail2ban` on the Caddy access log. Do not skip this step.
+
+### Deploy checklist (before first public start)
+
+1. DNS `A` record for `RUSTOK_PUBLIC_DOMAIN` → host, propagated.
+2. Host firewall: allow 80/443 (tcp+udp); everything else default-deny.
+3. Host-level rate limiting / fail2ban in place (see above).
+4. `.env` populated (`chmod 600`); `RUSTOK_MCP_INBOUND_API_KEY` from
+   `openssl rand -hex 32`; `RUSTOK_MCP_API_KEY` set.
+5. First bring-up with Let's Encrypt **staging** CA; confirm a cert is issued
+   and `https://$DOMAIN/health` returns 200, `GET /mcp/sse` without a token → 401.
+6. Switch to the production CA; redeploy; re-verify.
+7. Smoke the full chain with a real client: `Authorization: Bearer
+   $RUSTOK_MCP_INBOUND_API_KEY` against `/mcp/sse` streams events.

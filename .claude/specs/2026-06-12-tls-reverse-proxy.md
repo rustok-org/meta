@@ -131,12 +131,20 @@ discovery is unused in a fixed topology). Approved at the first Gate 1.
 1. `docker compose up -d` (base only) behaves exactly as today: gateway on
    `127.0.0.1:3000`, MCP on `127.0.0.1:3001`, no caddy container, healthchecks
    green, no inbound key required.
-2. `RUSTOK_PUBLIC_DOMAIN=localhost RUSTOK_ACME_EMAIL=dev@localhost
-   RUSTOK_MCP_INBOUND_API_KEY=$(openssl rand -hex 32)
-   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d` starts
-   Caddy (localhost → internal CA); `curl -k https://localhost/health` returns
-   MCP health through the proxy; `curl -kN https://localhost/mcp/sse` (with a
-   valid bearer token) streams the first SSE event without buffering delay.
+2. Prod overlay starts Caddy (localhost → internal CA):
+
+   ```bash
+   RUSTOK_KEYRING_PASSWORD=x \
+   RUSTOK_PUBLIC_DOMAIN=localhost \
+   RUSTOK_ACME_EMAIL=dev@localhost \
+   RUSTOK_MCP_API_KEY=k \
+   RUSTOK_MCP_INBOUND_API_KEY=$(openssl rand -hex 32) \
+     docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+   ```
+
+   `curl -k https://localhost/health` returns MCP health through the proxy;
+   `curl -kN -H "Authorization: Bearer $RUSTOK_MCP_INBOUND_API_KEY"
+   https://localhost/mcp/sse` streams the first SSE event without buffering delay.
 3. **D2:** through Caddy, `GET /mcp/sse` (or `POST /mcp/message`) without a
    bearer token → `401`; with `Authorization: Bearer $RUSTOK_MCP_INBOUND_API_KEY`
    → passes.
@@ -170,7 +178,9 @@ is runnable wherever a compose binary exists.
    criterion 2 (health + SSE via proxy); `ss -tlnp` shows only Caddy on 80/443
    (criterion 5).
 4. D2 auth through proxy: `curl -k https://localhost/mcp/sse` without token →
-   401; with `-H "Authorization: Bearer $KEY"` → not 401 (criterion 3).
+   401; with `-H "Authorization: Bearer $KEY"` → not 401 (criterion 3). The
+   echo-stub also asserts the upstream receives the `Authorization` header
+   **verbatim** (Caddy does not strip/rewrite it) — review #12.
 5. Negative / D2: prod up without `RUSTOK_MCP_INBOUND_API_KEY` → compose `:?`
    error; without `RUSTOK_PUBLIC_DOMAIN` → `:?` error (criterion 4).
 6. Real Let's Encrypt issuance is not locally testable — verified at deploy
