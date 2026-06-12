@@ -40,13 +40,13 @@ Roadmap names Traefik; we use **Caddy** (Codex `devops.md` primary, built-in
 Let's Encrypt, ~10-line config, already in v1 production; Traefik's dynamic
 discovery is unused in a fixed topology). Approved at the first Gate 1.
 
-## Prerequisites (Captain decisions, before/at Gate 1)
+## Prerequisites
 
-1. **Docker is not installed on the workstation** (verified 2026-06-12).
-   Either Captain installs it (`curl -fsSL https://get.docker.com | sh` —
-   needs sudo), or the test plan degrades to YAML review locally + full
-   verification on the target server. Engineer's evidence for Gate 2 depends
-   on this choice.
+1. **Docker installed 2026-06-12** (Engine 29.5.3, Compose v5.1.4). The user's
+   shell reaches the daemon via `sg docker -c '...'`. So `docker compose config`
+   lint and a local `localhost`/internal-CA bring-up are runnable here — Gate 2
+   no longer degrades to YAML-only. Real Let's Encrypt issuance still needs a
+   public domain + server (verified at deploy).
 2. **Deploy target conflict:** v1 production Caddy already binds 80/443 on its
    server (api.rustokwallet.com). The org stack needs a dedicated host, or
    integration into the existing proxy at deploy time. Out of PR scope;
