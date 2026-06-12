@@ -71,3 +71,36 @@ jobs:
              docker compose -f docker-compose.yml -f docker-compose.obs.yml config >/dev/null 2>&1; then
             echo "ERROR: obs config passed without GF_SECURITY_ADMIN_PASSWORD"; exit 1
           fi
+
+      # Validate the observability config files with their native tools — compose
+      # config does not parse bind-mounted file contents (review T1).
+      - name: validate prometheus config
+        run: |
+          docker run --rm --entrypoint promtool \
+            -v "$PWD/observability/prometheus.yml":/p.yml:ro prom/prometheus:v3.4.1 \
+            check config /p.yml
+
+      - name: validate alloy config
+        run: |
+          docker run --rm -v "$PWD/observability/alloy/config.alloy":/c.alloy:ro \
+            grafana/alloy:v1.8.1 fmt /c.alloy >/dev/null
+
+      - name: validate tempo config
+        run: |
+          docker run --rm -v "$PWD/observability/tempo.yaml":/tempo.yaml:ro \
+            grafana/tempo:2.7.0 -config.file=/tempo.yaml -config.verify=true
+
+      - name: validate loki + grafana configs
+        run: |
+          python3 -c "import yaml; yaml.safe_load(open('observability/loki.yaml'))"
+          python3 - <<'PY'
+          import json, glob, re
+          uids = set(re.findall(r'uid:\s*(\w+)',
+                     open('observability/grafana/provisioning/datasources/datasources.yaml').read()))
+          for f in glob.glob('observability/grafana/provisioning/dashboards/*.json'):
+              json.load(open(f))  # JSON syntax
+              used = set(re.findall(r'"uid":\s*"(\w+)"', open(f).read()))
+              unknown = used - uids
+              assert not unknown, f"{f}: unknown datasource uids {unknown}"
+          print("grafana provisioning OK")
+          PY

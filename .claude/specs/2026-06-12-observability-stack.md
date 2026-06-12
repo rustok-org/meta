@@ -116,10 +116,16 @@ docker-compose.obs.yml` minimum). Running obs alone fails (no `edge`).
      access Grafana via SSH tunnel, the host-level rate-limit setup (nftables +
      fail2ban examples), and the disk-usage check + manual-purge procedure (D7).
   5. `.github/workflows/ci.yml`: validate the three-file compose config (dummy
-     `GF_SECURITY_ADMIN_PASSWORD=ci`, F4) **and** assert fail-fast without
-     `GF_SECURITY_ADMIN_PASSWORD` (suggestion, mirrors the prod D2 CI step).
-  6. All obs services get `logging: json-file` with rotation (max-size/max-file),
-     consistent with Caddy (suggestion).
+     `GF_SECURITY_ADMIN_PASSWORD=ci`, F4); assert fail-fast without
+     `GF_SECURITY_ADMIN_PASSWORD` (suggestion, mirrors the prod D2 CI step);
+     **validate each obs config with its native tool** — promtool check config,
+     `alloy fmt`, tempo `-config.verify`, loki YAML parse, Grafana JSON +
+     datasource-UID cross-check (review T1; compose config does not parse
+     bind-mounted contents).
+  6. All obs services get `logging: json-file` with rotation (max-size/max-file)
+     **and `read_only: true` + a small tmpfs**, consistent with the base stack
+     and Caddy (suggestion + review D1; verified all 5 stay healthy under
+     read_only since each writes only to its named volume).
 - **Explicitly NOT included:**
   - App instrumentation in `core`/`mcp` (5.2b/c) — no `/metrics`, no OTLP export
     from apps yet; Prometheus app-scrape targets stay commented until then.
