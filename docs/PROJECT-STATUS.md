@@ -18,7 +18,7 @@
 | 3 — MCP Server (Python) | scaffold, protocol, capabilities, Gateway client | ✅ mcp #17, #18, #19, #20; read path (PR-3.5) ✅ mcp #22 + core #44 |
 | 4 — Event Bus + Audit | Redis Streams publisher, audit consumer | ✅ #34, #36 |
 | 4.5 — Core Real Integration | gRPC stub → real wallet/router/sign/provider | ✅ #38, #40, #41, #42, #43 (plan #39) |
-| 5 — Production Hardening | docker-compose-full, observability, postgres | 🔄 in progress — full compose ✅ meta #11; MCP inbound auth ✅ mcp #24; Caddy TLS reverse proxy ✅ meta #15; **observability stack ✅ (PR-5.2a); core instrumentation ✅ (PR-5.2b, this PR)**; 5.2c mcp + 5.2d metrics + postgres pending |
+| 5 — Production Hardening | docker-compose-full, observability, postgres | 🔄 in progress — full compose ✅ meta #11; MCP inbound auth ✅ mcp #24; Caddy TLS reverse proxy ✅ meta #15; **observability stack ✅ (PR-5.2a); core instrumentation ✅ (PR-5.2b); mcp instrumentation + full MCP→Gateway→Core trace ✅ (PR-5.2c, this PR)**; 5.2d metrics + postgres pending |
 
 **Core workspace (12 crates):** `types`, `crypto`, `keyring`, `provider`, `router`, `txguard`, `sign`, `audit`, `events`, `wallet`, `gateway`, `grpc` (~190 `#[test]` functions; all gates green at PR #43 merge, 2026-06-03).
 
@@ -48,11 +48,13 @@
      OTLP/HTTP trace export to `alloy:4318`, `#[instrument]` spans on gRPC
      handlers, W3C traceparent propagation gateway→core, `trace_id` in logs.
      Metrics deferred to 5.2d. Adds the `telemetry` network in `meta`.
-   - **5.2c** — `mcp` instrumentation: OTel FastAPI, traceparent.
+   - **5.2c** ✅ (this PR) — `mcp` instrumentation (Python OTel auto-instrumentation:
+     FastAPI server span + httpx traceparent) + Gateway inbound HTTP traceparent
+     extract (core) + mcp on the `telemetry` network (meta). Full
+     **MCP→Gateway→Core** trace in Tempo, `trace_id` in Loki.
    - **5.2d** — metrics: `/metrics` on gateway/mcp (Prometheus pull) +
      uncomment app scrape targets in `prometheus.yml`.
-   - e2e trace-in-Grafana gate: gateway↔core met (5.2b); full MCP→gateway→core
-     chain after 5.2c.
+   - **e2e trace-in-Grafana gate: MET** (MCP→Gateway→Core, 5.2c).
 3. **PR-5.3** `feat/postgres-migration` (optional)
 
 ### Backlog (from review round 2026-06-10, below single-PR threshold)
