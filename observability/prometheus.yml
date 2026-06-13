@@ -15,10 +15,6 @@ scrape_configs:
     static_configs:
       - targets: ["alloy:12345"] # Alloy's own /metrics
 
-  # App targets land in PR-5.2b/c once gateway/mcp expose /metrics:
-  # - job_name: gateway
-  #   static_configs:
-  #     - targets: ["gateway:3000"]
-  # - job_name: mcp
-  #   static_configs:
-  #     - targets: ["mcp:3001"]
+  # App metrics (gateway / core / mcp) are NOT scraped — they are pushed via OTLP
+  # to Alloy and arrive here through the remote-write receiver (PR-5.2d). No app
+  # scrape targets needed.

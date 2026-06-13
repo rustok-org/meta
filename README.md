@@ -105,7 +105,10 @@ RUSTOK_ACME_EMAIL=... RUSTOK_MCP_API_KEY=... RUSTOK_MCP_INBOUND_API_KEY=... \
   over HTTP, and the Gateway continues an inbound trace — so an MCP tool call shows
   in Tempo as **one** trace `rustok-mcp` → `rustok-gateway` → `rustok-core`, with
   matching `trace_id` in the JSON logs.
-- App metrics (`/metrics`) follow in PR-5.2d.
+- **App metrics (PR-5.2d):** gateway / core / mcp push OTLP **metrics** to Alloy on
+  the same endpoint as traces; Alloy remote-writes them to Prometheus (no `/metrics`
+  scrape). Query e.g. `http_server_request_duration_*` / `rpc_server_duration_*` in
+  Grafana. This completes the Phase 5 observability layer (logs + traces + metrics).
 - **Docker socket:** Alloy mounts `/var/run/docker.sock` to discover container
   logs. A `:ro` mount does not restrict the Docker API — a compromised Alloy is
   root-equivalent on the host. It is contained by network isolation, no public
