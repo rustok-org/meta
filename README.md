@@ -94,8 +94,14 @@ RUSTOK_ACME_EMAIL=... RUSTOK_MCP_API_KEY=... RUSTOK_MCP_INBOUND_API_KEY=... \
   workstation over an **SSH tunnel**:
   `ssh -N -L 3030:127.0.0.1:3030 user@host`, then open `http://localhost:3030`
   (login `admin` / `$GF_SECURITY_ADMIN_PASSWORD`).
-- App metrics/traces start flowing once PR-5.2b (core) and PR-5.2c (mcp) export
-  to `alloy:4317`. This PR ships the backend + container-log shipping only.
+- **Distributed traces (PR-5.2b):** with this overlay up, core/gateway export
+  OTLP/HTTP spans to `alloy:4318` over a dedicated `telemetry` network (the
+  overlay sets `RUSTOK_OTLP_ENDPOINT` for them). A REST call to the gateway
+  appears in Tempo as one trace spanning gateway → core; their JSON logs carry
+  the matching `trace_id` (jump Tempo↔Loki via the provisioned datasource link).
+  Without the overlay (plain `docker compose up`) the services emit JSON logs
+  only — no trace export. `RUST_LOG` tunes log verbosity (default `info`).
+- MCP traces and app metrics (`/metrics`) follow in PR-5.2c / PR-5.2d.
 - **Docker socket:** Alloy mounts `/var/run/docker.sock` to discover container
   logs. A `:ro` mount does not restrict the Docker API — a compromised Alloy is
   root-equivalent on the host. It is contained by network isolation, no public

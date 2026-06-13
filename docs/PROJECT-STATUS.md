@@ -18,7 +18,7 @@
 | 3 — MCP Server (Python) | scaffold, protocol, capabilities, Gateway client | ✅ mcp #17, #18, #19, #20; read path (PR-3.5) ✅ mcp #22 + core #44 |
 | 4 — Event Bus + Audit | Redis Streams publisher, audit consumer | ✅ #34, #36 |
 | 4.5 — Core Real Integration | gRPC stub → real wallet/router/sign/provider | ✅ #38, #40, #41, #42, #43 (plan #39) |
-| 5 — Production Hardening | docker-compose-full, observability, postgres | 🔄 in progress — full compose ✅ meta #11; MCP inbound auth ✅ mcp #24; Caddy TLS reverse proxy ✅ meta #15; **observability stack ✅ (PR-5.2a, this PR)**; 5.2b/c instrumentation + postgres pending |
+| 5 — Production Hardening | docker-compose-full, observability, postgres | 🔄 in progress — full compose ✅ meta #11; MCP inbound auth ✅ mcp #24; Caddy TLS reverse proxy ✅ meta #15; **observability stack ✅ (PR-5.2a); core instrumentation ✅ (PR-5.2b, this PR)**; 5.2c mcp + 5.2d metrics + postgres pending |
 
 **Core workspace (12 crates):** `types`, `crypto`, `keyring`, `provider`, `router`, `txguard`, `sign`, `audit`, `events`, `wallet`, `gateway`, `grpc` (~190 `#[test]` functions; all gates green at PR #43 merge, 2026-06-03).
 
@@ -42,12 +42,17 @@
    Let's Encrypt issuance + host-level rate limiting are deploy-time steps
    (README deploy checklist).
 2. **PR-5.2** `feat/observability` (decomposed):
-   - **5.2a** ✅ (this PR) — observability backend in `meta` (Alloy + Tempo +
+   - **5.2a** ✅ — observability backend in `meta` (Alloy + Tempo +
      Prometheus + Loki + Grafana overlay) + host-level edge rate-limit docs (#9).
-   - **5.2b** — `core` instrumentation: JSON logs + EnvFilter, OTLP export,
-     spans on gRPC/router/sign, tonic trace propagation, `/metrics`.
-   - **5.2c** — `mcp` instrumentation: OTel FastAPI, `/metrics`, traceparent.
-   - e2e trace-in-Grafana gate is met after 5.2b/c.
+   - **5.2b** ✅ (this PR) — `core` instrumentation: JSON logs + EnvFilter,
+     OTLP/HTTP trace export to `alloy:4318`, `#[instrument]` spans on gRPC
+     handlers, W3C traceparent propagation gateway→core, `trace_id` in logs.
+     Metrics deferred to 5.2d. Adds the `telemetry` network in `meta`.
+   - **5.2c** — `mcp` instrumentation: OTel FastAPI, traceparent.
+   - **5.2d** — metrics: `/metrics` on gateway/mcp (Prometheus pull) +
+     uncomment app scrape targets in `prometheus.yml`.
+   - e2e trace-in-Grafana gate: gateway↔core met (5.2b); full MCP→gateway→core
+     chain after 5.2c.
 3. **PR-5.3** `feat/postgres-migration` (optional)
 
 ### Backlog (from review round 2026-06-10, below single-PR threshold)
