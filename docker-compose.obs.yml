@@ -32,6 +32,7 @@ services:
     networks:
       - observability
       - edge # receive OTLP from apps (gateway/mcp) in 5.2b/c
+      - telemetry # dedicated app->Alloy OTLP egress (PR-5.2b)
     security_opt:
       - no-new-privileges:true
     read_only: true
@@ -208,8 +209,33 @@ services:
       tempo:
         condition: service_healthy
 
+  # --- application OTLP wiring (PR-5.2b) ---
+  # core/gateway are fully defined in the base file; these overrides only add the
+  # telemetry network + OTLP endpoint, so distributed tracing is enabled exactly
+  # when the observability overlay is layered on (and stays off for a plain
+  # `docker compose up`). The `networks` lists are re-declared IN FULL because
+  # Compose does not reliably append a service's `networks` sequence across `-f`
+  # overlays — a partial list would drop base connectivity.
+  core:
+    networks:
+      - internal # keep base connectivity (gateway -> core)
+      - telemetry # reach alloy:4318 for OTLP export
+    environment:
+      RUSTOK_OTLP_ENDPOINT: http://alloy:4318
+
+  gateway:
+    networks:
+      - internal # base: reach core
+      - edge # base: reachable by mcp / caddy
+      - telemetry # reach alloy:4318 for OTLP export
+    environment:
+      RUSTOK_OTLP_ENDPOINT: http://alloy:4318
+
 networks:
   observability:
+  # Dedicated, narrow network for app -> Alloy OTLP egress. Core stays off `edge`
+  # (where mcp/caddy live) so its unauthenticated gRPC port is not exposed there.
+  telemetry:
 
 volumes:
   alloy-data:
