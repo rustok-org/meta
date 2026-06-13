@@ -101,7 +101,11 @@ RUSTOK_ACME_EMAIL=... RUSTOK_MCP_API_KEY=... RUSTOK_MCP_INBOUND_API_KEY=... \
   the matching `trace_id` (jump Tempo↔Loki via the provisioned datasource link).
   Without the overlay (plain `docker compose up`) the services emit JSON logs
   only — no trace export. `RUST_LOG` tunes log verbosity (default `info`).
-- MCP traces and app metrics (`/metrics`) follow in PR-5.2c / PR-5.2d.
+- **MCP traces (PR-5.2c):** MCP is also instrumented and propagates `traceparent`
+  over HTTP, and the Gateway continues an inbound trace — so an MCP tool call shows
+  in Tempo as **one** trace `rustok-mcp` → `rustok-gateway` → `rustok-core`, with
+  matching `trace_id` in the JSON logs.
+- App metrics (`/metrics`) follow in PR-5.2d.
 - **Docker socket:** Alloy mounts `/var/run/docker.sock` to discover container
   logs. A `:ro` mount does not restrict the Docker API — a compromised Alloy is
   root-equivalent on the host. It is contained by network isolation, no public

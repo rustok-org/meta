@@ -209,8 +209,8 @@ services:
       tempo:
         condition: service_healthy
 
-  # --- application OTLP wiring (PR-5.2b) ---
-  # core/gateway are fully defined in the base file; these overrides only add the
+  # --- application OTLP wiring (PR-5.2b core/gateway, PR-5.2c mcp) ---
+  # Services are fully defined in the base file; these overrides only add the
   # telemetry network + OTLP endpoint, so distributed tracing is enabled exactly
   # when the observability overlay is layered on (and stays off for a plain
   # `docker compose up`). The `networks` lists are re-declared IN FULL because
@@ -227,6 +227,13 @@ services:
     networks:
       - internal # base: reach core
       - edge # base: reachable by mcp / caddy
+      - telemetry # reach alloy:4318 for OTLP export
+    environment:
+      RUSTOK_OTLP_ENDPOINT: http://alloy:4318
+
+  mcp:
+    networks:
+      - edge # base: reach gateway / reachable by caddy
       - telemetry # reach alloy:4318 for OTLP export
     environment:
       RUSTOK_OTLP_ENDPOINT: http://alloy:4318
