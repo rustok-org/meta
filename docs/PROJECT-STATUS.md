@@ -1,6 +1,6 @@
 # Project Status — Rustok Org
 
-> Updated: 2026-06-12  
+> Updated: 2026-06-14  
 > Read this at session start to understand where we are.  
 > Phase numbering follows `core/docs/CORE-MCP-ROADMAP.md` (source of truth for the MVP roadmap).
 
@@ -22,7 +22,9 @@
 
 **Core workspace (12 crates):** `types`, `crypto`, `keyring`, `provider`, `router`, `txguard`, `sign`, `audit`, `events`, `wallet`, `gateway`, `grpc` (~190 `#[test]` functions; all gates green at PR #43 merge, 2026-06-03).
 
-**End-to-end chain works with real data:** MCP → Gateway → Core returns real address, balances, `tx_hash`, EIP-191 signatures (Phase 4.5 gate passed). All 5 MCP tools are real since 2026-06-10 (read path: Gateway `GET /api/v1/wallet/context` + `/balance`, core #44; MCP wiring, mcp #22 — verified end-to-end via stdio). Full stack runs via `meta/docker-compose.yml` (meta #11).
+**End-to-end chain works with real data:** MCP → Gateway → Core returns real address, balances, `tx_hash`, EIP-191 signatures (Phase 4.5 gate passed). All 5 original MCP tools are real since 2026-06-10 (read path: Gateway `GET /api/v1/wallet/context` + `/balance`, core #44; MCP wiring, mcp #22 — verified end-to-end via stdio). Full stack runs via `meta/docker-compose.yml` (meta #11).
+
+**DeFi positions shipped (PR-6.1, 2026-06-14):** a 6th MCP tool `get_positions` (Aave v3 + ERC-4626) — new core `crates/positions` + `GetPositions` gRPC + gateway `GET /api/v1/wallet/positions` (core #52), mcp tool gated by READ_WALLET (mcp #27). Clean-room port of v1 `agent-dapps`; best-effort, no price oracle. Verified live full-chain (MCP → Gateway → Core) against a real mainnet Aave v3 position. **The org MCP is now at parity with the deployed ClawHub wallet (`temrjan/rustok-wallet`) and ready to replace it.**
 
 ---
 
@@ -62,6 +64,7 @@
 ### Backlog (from review round 2026-06-10, below single-PR threshold)
 - Gateway positive-path tests: needs an in-process tonic test server (`CoreClient` is concrete, not a trait) — verify JSON serialization against proto changes
 - `wallet_context` TTL cache on Gateway — **rejected for now** (tools are called on demand, stale balance risk); revisit with Phase 5 metrics
+- chore (mcp): make `mypy --strict` clean on the pre-existing `tests/` (Gate-2 reviewer note on PR-6.1 PR-B; `mypy src` is already clean — this is test-only debt, unrelated to feature code)
 
 ### Option B: Phase 5 security debt (deferred from 4.5)
 1. Runtime/RPC unlock (today: startup-unlock only via `UnlockMethod`)
@@ -90,7 +93,7 @@
 |----------|---------|--------|
 | `llm` stack | Rust (Rig) vs Python (FastAPI + LangChain) | **Under review.** `meta/docs/LLM-ARCHITECTURE.md` recommends Rust (Rig) with gRPC isolation fallback; reconcile at LLM kickoff. |
 | `llm` repo visibility | AGENTS.md says private; repo is **public** on GitHub | Verify intent — flip visibility or fix docs. |
-| ClawHub/Smithery legacy skill (`temrjan/rustok-wallet`, ~323 downloads) | Keep / republish on Python MCP | **Parked.** Do NOT delete until new MCP is republished. |
+| ClawHub/Smithery legacy skill (`temrjan/rustok-wallet`, ~323 downloads) | Keep / republish on Python MCP | **Parity reached (PR-6.1).** The new MCP now matches ClawHub (incl. `get_positions`). Still parked — do NOT delete until the new MCP is republished/deployed. |
 | React Native version | 0.76 (current) vs latest | **Resolved:** Stay on 0.76 until Mobile phase. |
 | Hardware signers | Ledger, Keystone, air-gapped | After core v1.0 |
 | Swap integration | 1inch, 0x, CoW | After txguard v2 + `simulateAssetChanges` |
@@ -111,6 +114,7 @@
 | 2026-06-02 | **core:** `crates/wallet` WalletCore (#38), Phase 4.5 plan v2 (#39) |
 | 2026-06-03 | **core:** Phase 4.5 complete — gRPC wired to real WalletCore/router/sign: #40, #41, #42, #43 |
 | 2026-06-10 | **PR-3.5 closed:** Gateway wallet read endpoints (core #44) + MCP real read tools & Python Dockerfile (mcp #22); full-stack compose w/o TLS (meta #11); docs sync (core #45, meta #12); `deny.toml`: ignore RUSTSEC-2026-0173; mcp smoke test rewritten for Python image |
+| 2026-06-14 | **PR-6.1 DeFi positions:** clean-room port of v1 `agent-dapps` — core `crates/positions` (Aave v3 + ERC-4626) + `GetPositions` gRPC + gateway `/api/v1/wallet/positions` (core #52), mcp `get_positions` tool gated READ_WALLET (mcp #27). Live full-chain e2e vs a real mainnet Aave position. **MCP at parity with ClawHub.** |
 
 ---
 
@@ -119,7 +123,7 @@
 | Repo | Visibility | Stack | State |
 |------|-----------|-------|-------|
 | `core` | Private | Rust 2024 (12 crates) | Phases 0–4.5 done; real gRPC + Axum Gateway |
-| `mcp` | Public | Python 3.12 + FastAPI + uv | Complete: protocol/SSE/stdio/capabilities + all 5 tools real, Docker image |
+| `mcp` | Public | Python 3.12 + FastAPI + uv | Complete: protocol/SSE/stdio/capabilities + 6 tools real (incl. `get_positions`, PR-6.1), Docker image |
 | `mobile` | Public | React Native 0.76 + TS | Scaffold only (placeholder App.tsx) |
 | `llm` | Public (docs say private!) | TBD | Scaffold only; stack undecided |
 | `meta` | Public | Docs / Docker | This file + specs |
