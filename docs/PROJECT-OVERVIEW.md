@@ -111,6 +111,9 @@ meta #20). Optional remaining: PR-5.3 Postgres.
   against real mainnet (a real Aave v3 position decodes through `get_positions`).
 - **Production cutover done:** `api.rustokwallet.com` now serves the **new stack**
   (was the v1 monolith). See §6.
+- **Audit consumer P1 resolved & deployed** (2026-06-14, #55 + #56) — prod core
+  rebuilt from `main` and redeployed; idle-read timeouts gone, audit logging
+  healthy. See §8.
 - MCP at feature parity with the deployed ClawHub skill — but the **published
   ClawHub skill itself is not yet updated** (see §8).
 
@@ -145,6 +148,12 @@ private; no registry/token needed).
 **Rollback (until the monolith is deleted):** restore `Caddyfile.bak` → `caddy
 reload` → `docker start rustok-api`.
 
+**Core-image rollback:** each deploy also tags the image `rustok-core:main-<sha>`
+(immutable) alongside the moving `v0.1.0`. To revert a bad core deploy, retag the
+prior `main-<sha>` as `v0.1.0` and `up -d core gateway`. **Recreating core and
+gateway together can hit the startup race in §8.3 — restart `gateway` after core
+is listening.**
+
 **Deploy/cutover model:** new stack brought up alongside, verified on a loopback
 test port, then Caddy `reverse_proxy` repointed + graceful `caddy reload`
 (zero-downtime), monolith stopped only after the public domain verified.
@@ -172,27 +181,41 @@ test port, then Caddy `reverse_proxy` repointed + graceful `caddy reload`
 
 ## 8. Where we're going (next)
 
-**Immediate — finish "replace ClawHub":**
-1. **De-v1-ify the `mcp` repo skill** — `mcp/skills/rustok-wallet/` (SKILL.md,
-   claw.json, scripts), `smithery.yaml`, `docs/`, `SECURITY.md`, `CHANGELOG.md`,
-   `.github/workflows/{release,docker-publish}.yml`, PR template all still target
-   the dead v1 Rust binary `rustok-agent-mcp` + the dropped policy model. Rewrite
-   for the new Python MCP (`rustok-mcp-stdio`, `RUSTOK_MCP_*`). Distribution model:
-   **stdio package** (PyPI/uvx). Then the **Captain publishes via the ClawHub web
-   UI**. (Skill package is MIT-0 — no clean-room constraint there.)
+**Immediate — finish "replace ClawHub" (Phase 7, self-custody distribution):**
+1. **De-v1-ify the `mcp` skill/distribution** ✅ mostly done — #28 removed the
+   dead `rustok-agent-mcp` release workflow + dropped-policy `policy.json` and
+   rewrote SECURITY.md/CHANGELOG/PR template for v2; #29 (PR-7.1b) ships the
+   self-custody **all-in-one stdio image** (Core+Gateway+MCP in one `docker run
+   -i`, keys in the user's local volume) + `wallet-publish.yml`; onboarding
+   (`create_wallet` + recovery mnemonic) is core #53 (PR-7.3). **Remaining:** tag
+   a `v*` release so the public Core image publishes (follow-up 6), then the
+   **Captain publishes the skill via the ClawHub web UI**.
 
 **Operational follow-ups (post-cutover):**
-2. **P1 — audit consumer:** core logs `audit consumer stopped: event consume
-   failed` (Redis consumer-group on an empty/missing stream) → audit events are
-   dropped until fixed.
-3. **Alchemy RPC:** swap the public RPCs for an Alchemy key (edit
+2. ~~**P1 — audit consumer** dropped events on idle reads~~ ✅ **resolved &
+   deployed 2026-06-14** — #55 (resilient consumer, no longer dies on transient
+   Redis errors) + #56 (`response_timeout` 7s > the 5s `XREAD BLOCK`, so idle
+   reads return empty instead of timing out client-side). Prod rebuilt from
+   `main` + redeployed; verified `audit stream read failed` = 0.
+3. **P1 (new) — gateway↔core startup race:** the Gateway connects to Core
+   eagerly **once** at boot and does **not** retry; if Core's gRPC isn't
+   listening yet (e.g. core+gateway recreated together), the Gateway logs
+   "running without downstream" and serves `core_unavailable` until manually
+   restarted. Workaround: restart `gateway` after core is up. Fix: a reconnecting
+   tonic channel (lazy connect) or `depends_on: service_healthy` gating in the
+   compose. (core/gateway + meta compose.)
+4. **Alchemy RPC:** swap the public RPCs for an Alchemy key (edit
    `/opt/rustok/deploy-v2/.env`, `docker compose up -d core`).
-4. **Reproducibility:** commit the deploy artifacts (`docker-compose` v2 +
+5. **Reproducibility:** commit the deploy artifacts (`docker-compose` v2 +
    `Caddyfile-v2`) into `meta` (currently only on the server).
-5. **Remove the old monolith** after 24–48h of stability.
+6. **Publish the public Core image:** #54 publishes `ghcr.io/<owner>/rustok-core`
+   on `v*` tags, but **no `v*` tag exists yet** → the mcp self-custody all-in-one
+   image (#29), which pulls those binaries, can't be built/pulled by users until
+   a version is tagged.
+7. **Remove the old monolith** after 24–48h of stability.
 
 **Later / optional:**
-6. PR-5.3 Postgres migration. LLM brain (`llm` repo, stack decision pending).
+8. PR-5.3 Postgres migration. LLM brain (`llm` repo, stack decision pending).
    Mobile rebuild. Hardware signers, swap aggregation (deferred per roadmap).
 
 ---

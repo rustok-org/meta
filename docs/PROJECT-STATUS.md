@@ -6,7 +6,7 @@
 
 ---
 
-## Current Phase: MVP Roadmap Phases 0–4.5 ✅ COMPLETE → Phase 5 (Production Hardening) is next
+## Current Phase: Phases 0–6.1 ✅ + production cutover done → Phase 7 (Self-Custody Distribution) in progress
 
 **Roadmap goal:** Functional Core + Gateway + MCP Server = minimum viable product.
 
@@ -18,9 +18,12 @@
 | 3 — MCP Server (Python) | scaffold, protocol, capabilities, Gateway client | ✅ mcp #17, #18, #19, #20; read path (PR-3.5) ✅ mcp #22 + core #44 |
 | 4 — Event Bus + Audit | Redis Streams publisher, audit consumer | ✅ #34, #36 |
 | 4.5 — Core Real Integration | gRPC stub → real wallet/router/sign/provider | ✅ #38, #40, #41, #42, #43 (plan #39) |
-| 5 — Production Hardening | docker-compose-full, observability, postgres | 🔄 in progress — full compose ✅ meta #11; MCP inbound auth ✅ mcp #24; Caddy TLS reverse proxy ✅ meta #15; **observability ✅ COMPLETE — logs+traces+metrics across mcp/gateway/core (PR-5.2a/b/c/d)**; postgres (5.3) pending |
+| 5 — Production Hardening | docker-compose-full, observability, TLS | ✅ full compose meta #11; MCP inbound auth mcp #24; Caddy TLS meta #15; **observability COMPLETE** (logs+traces+metrics, PR-5.2a/b/c/d); postgres (5.3) still optional/pending |
+| 6.1 — DeFi positions | Aave v3 + ERC-4626 `get_positions` | ✅ core #52, mcp #27 (clean-room port of v1 agent-dapps) |
+| 7 — Self-Custody Distribution | onboarding, public image, all-in-one MCP image, ClawHub republish | 🔄 onboarding ✅ core #53 (PR-7.3); GHCR publish workflow ✅ core #54 (PR-7.2, **no `v*` tag pushed yet**); de-v1-ify ✅ mcp #28; all-in-one stdio image ✅ mcp #29 (PR-7.1b); **ClawHub web republish pending** |
+| Production cutover | new stack on `api.rustokwallet.com` | ✅ done 2026-06-14; audit-consumer fixes #55/#56 built & deployed; monolith stopped (retained for rollback) |
 
-**Core workspace (12 crates):** `types`, `crypto`, `keyring`, `provider`, `router`, `txguard`, `sign`, `audit`, `events`, `wallet`, `gateway`, `grpc` (~190 `#[test]` functions; all gates green at PR #43 merge, 2026-06-03).
+**Core workspace (13 crates):** `types`, `crypto`, `keyring`, `provider`, `router`, `txguard`, `sign`, `audit`, `events`, `wallet`, `gateway`, `grpc`, `positions` (PR-6.1) (~190 `#[test]` functions as of PR #43; positions added more).
 
 **End-to-end chain works with real data:** MCP → Gateway → Core returns real address, balances, `tx_hash`, EIP-191 signatures (Phase 4.5 gate passed). All 5 original MCP tools are real since 2026-06-10 (read path: Gateway `GET /api/v1/wallet/context` + `/balance`, core #44; MCP wiring, mcp #22 — verified end-to-end via stdio). Full stack runs via `meta/docker-compose.yml` (meta #11).
 
@@ -32,13 +35,23 @@
 
 | Task | Repo | Blocker |
 |------|------|---------|
-| — (no active PRs; Phase 5 not started) | | |
+| Phase 7 finish: tag `v*` → publish public Core image; then republish ClawHub skill | core / mcp | needs version tag + Captain ClawHub web publish |
+| Fix gateway↔core startup race (eager connect, no retry) | core (gateway) / meta | see Blockers |
 
 ---
 
 ## Next Immediate Steps
 
-### Option A: Finish Phase 5 — Production Hardening (roadmap default)
+### Primary: Finish Phase 7 (self-custody distribution)
+1. **Tag a `v*` release on `core`** → triggers #54 to publish
+   `ghcr.io/<owner>/rustok-core`; the mcp all-in-one image (#29) depends on it.
+2. **Captain republishes the skill on ClawHub** (web UI) once the image is live.
+3. **Fix the gateway↔core startup race** (eager connect, no retry) — reconnecting
+   tonic channel or `depends_on: service_healthy` in compose.
+4. **Reproducibility:** commit deploy-v2 compose + `Caddyfile-v2` into `meta`.
+5. **Remove the old monolith** after 24–48h prod stability.
+
+### Done — Phase 5 Production Hardening (PR-5.3 Postgres is the only optional remainder)
 1. ~~**PR-5.1 remainder** — reverse proxy + SSL~~ ✅ **done** — Caddy TLS overlay
    (`docker-compose.prod.yml`), inbound auth required in prod (mcp #24). Real
    Let's Encrypt issuance + host-level rate limiting are deploy-time steps
@@ -54,24 +67,27 @@
      FastAPI server span + httpx traceparent) + Gateway inbound HTTP traceparent
      extract (core) + mcp on the `telemetry` network (meta). Full
      **MCP→Gateway→Core** trace in Tempo, `trace_id` in Loki.
-   - **5.2d** ✅ (this PR) — metrics via **OTLP push** to Alloy (→ Prometheus
+   - **5.2d** ✅ — metrics via **OTLP push** to Alloy (→ Prometheus
      remote_write; no `/metrics` scrape): gateway HTTP-duration middleware, core
      gRPC per-handler duration, mcp auto HTTP metrics. All three services.
    - **Phase 5 observability COMPLETE** — logs + traces + metrics across mcp,
      gateway, core. e2e trace-in-Grafana gate MET (5.2c).
-3. **PR-5.3** `feat/postgres-migration` (optional)
+3. **PR-5.3** `feat/postgres-migration` — **optional, not started** (the only remaining Phase 5 item)
 
 ### Backlog (from review round 2026-06-10, below single-PR threshold)
 - Gateway positive-path tests: needs an in-process tonic test server (`CoreClient` is concrete, not a trait) — verify JSON serialization against proto changes
 - `wallet_context` TTL cache on Gateway — **rejected for now** (tools are called on demand, stale balance risk); revisit with Phase 5 metrics
 - chore (mcp): make `mypy --strict` clean on the pre-existing `tests/` (Gate-2 reviewer note on PR-6.1 PR-B; `mypy src` is already clean — this is test-only debt, unrelated to feature code)
 
-### Option B: Phase 5 security debt (deferred from 4.5)
+### Deferred: security debt (from Phase 4.5)
 1. Runtime/RPC unlock (today: startup-unlock only via `UnlockMethod`)
-2. Policy + BudgetTracker (only execute budget-lock landed in 4.5.3)
-3. Keystore file perms `0600`; receipt wait in `router::execute`; parallel balance fetch
+2. Keystore file perms `0600`; receipt wait in `router::execute`; parallel balance fetch
 
-### Option C: Begin LLM Brain (separate product line)
+> Hard spend-limit/budget/policy is **deliberately dropped** (risk is the user's
+> to accept; opt-in limits may come later). `txguard` is kept. Do **not** re-add a
+> forced BudgetTracker.
+
+### Deferred: LLM Brain (separate product line)
 1. Resolve stack decision: Rust (Rig) vs Python (FastAPI + LangChain) — see Deferred Decisions
 2. Define Intent JSON schema; scaffold in `rustok-org/llm`
 
@@ -81,6 +97,8 @@
 
 | Blocker | Impact | Resolution |
 |---------|--------|------------|
+| Gateway↔core startup race (eager connect, no retry) | Recreating core+gateway together → gateway serves `core_unavailable` until restarted | Workaround: restart `gateway` after core is listening. Fix: reconnecting tonic channel / compose `depends_on: service_healthy`. |
+| Public Core image not published to GHCR | mcp self-custody all-in-one image (#29) can't pull Core binaries | Tag a `v*` release on `core` → #54 publishes the image. |
 | GitHub Free — no branch protection for private repos (`core`) | Can accidentally push to `main` | **Mitigated** — pre-push hook + process discipline. |
 | `uniffi` FFI bridge does not exist (no crate) | Mobile cannot call core | Low priority until Mobile phase. Needs `uniffi-bindgen-react-native` scaffold. |
 | `simulateAssetChanges` not implemented in provider | Cannot preview swap/stake asset changes | Documented in `meta/docs/ALCHEMY-INTEGRATION.md`. Deferred to provider v2. |
@@ -115,6 +133,8 @@
 | 2026-06-03 | **core:** Phase 4.5 complete — gRPC wired to real WalletCore/router/sign: #40, #41, #42, #43 |
 | 2026-06-10 | **PR-3.5 closed:** Gateway wallet read endpoints (core #44) + MCP real read tools & Python Dockerfile (mcp #22); full-stack compose w/o TLS (meta #11); docs sync (core #45, meta #12); `deny.toml`: ignore RUSTSEC-2026-0173; mcp smoke test rewritten for Python image |
 | 2026-06-14 | **PR-6.1 DeFi positions:** clean-room port of v1 `agent-dapps` — core `crates/positions` (Aave v3 + ERC-4626) + `GetPositions` gRPC + gateway `/api/v1/wallet/positions` (core #52), mcp `get_positions` tool gated READ_WALLET (mcp #27). Live full-chain e2e vs a real mainnet Aave position. **MCP at parity with ClawHub.** |
+| 2026-06-14 | **Phase 7 self-custody distribution:** onboarding `create_wallet`+recovery mnemonic (core #53, PR-7.3); public Core image → GHCR on `v*` tags (core #54, PR-7.2); mcp de-v1-ify (#28) + all-in-one stdio wallet image (#29, PR-7.1b). |
+| 2026-06-14 | **Audit consumer P1 fixed + deployed:** resilient consumer (core #55) + block-compatible `response_timeout` (core #56); prod core rebuilt from `main` & redeployed (core+gateway), verified `audit stream read failed`=0, agent wallet `0x0C58…` intact. Found + worked around the gateway↔core startup race. |
 
 ---
 
@@ -122,7 +142,7 @@
 
 | Repo | Visibility | Stack | State |
 |------|-----------|-------|-------|
-| `core` | Private | Rust 2024 (12 crates) | Phases 0–4.5 done; real gRPC + Axum Gateway |
+| `core` | Private | Rust 2024 (13 crates) | Phases 0–6.1 done + prod-deployed; real gRPC + Axum Gateway |
 | `mcp` | Public | Python 3.12 + FastAPI + uv | Complete: protocol/SSE/stdio/capabilities + 6 tools real (incl. `get_positions`, PR-6.1), Docker image |
 | `mobile` | Public | React Native 0.76 + TS | Scaffold only (placeholder App.tsx) |
 | `llm` | Public (docs say private!) | TBD | Scaffold only; stack undecided |
@@ -143,6 +163,7 @@
 | 2026-06-01–02 | **Gateway (Axum) Phase 2** (#31–#33), **Event Bus + Audit Phase 4** (#34, #36) |
 | 2026-06-02–03 | **Phase 4.5 Core Real Integration:** WalletCore crate + full gRPC wiring (#38–#43) |
 | 2026-06-10 | Workstation re-clone; docs sync (core #45, meta #12); **PR-3.5 closed** (core #44 + mcp #22, e2e verified via stdio); full-stack compose (meta #11); deny.toml RUSTSEC-2026-0173; mcp smoke test fix |
+| 2026-06-14 | **PR-6.1 + Phase 7 + prod deploy:** DeFi positions (core #52, mcp #27); self-custody onboarding (core #53), GHCR publish workflow (core #54), mcp de-v1-ify (#28) + all-in-one image (#29); audit-consumer #55/#56 built & redeployed to prod (verified); docs sync (meta #21 overview + this status). |
 
 ---
 
