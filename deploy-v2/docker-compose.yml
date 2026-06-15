@@ -1,0 +1,85 @@
+name: rustokv2
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: rustok-redis
+    restart: unless-stopped
+    networks: [rustokv2]
+
+  core:
+    image: rustok-core:v0.1.0
+    container_name: rustok-core
+    restart: unless-stopped
+    environment:
+      RUSTOK_GRPC_ADDR: "0.0.0.0:50051"
+      RUSTOK_REDIS_URL: "redis://rustok-redis:6379"
+      RUSTOK_KEYRING_PASSWORD: ${RUSTOK_KEYRING_PASSWORD:?}
+      RUSTOK_ALLOWED_CHAINS: "1,8453"
+      RUSTOK_RPC_URLS_1: "https://ethereum-rpc.publicnode.com"
+      RUSTOK_RPC_URLS_8453: "https://base-rpc.publicnode.com"
+    volumes:
+      - rustok-data:/home/rustok/.rustok/agent
+    networks: [rustokv2]
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=64m
+    user: "1000:1000"
+
+  gateway:
+    image: rustok-core:v0.1.0
+    container_name: rustok-gateway
+    entrypoint: ["/usr/local/bin/gateway"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3000"   # loopback test port (live monolith stays on 3000)
+    environment:
+      RUSTOK_GATEWAY_ADDR: "0.0.0.0:3000"
+      RUSTOK_CORE_ADDR: "http://rustok-core:50051"
+      RUSTOK_MCP_API_KEY: ${RUSTOK_MCP_API_KEY:?}
+    networks: [rustokv2, shared]   # shared = existing caddy network (for cutover)
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=64m
+    user: "1000:1000"
+    # Override the image's core healthcheck (probes :50051) — the gateway
+    # listens on :3000. No curl/wget in the image, so probe /health over /dev/tcp.
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -c
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/3000 &&
+          printf 'GET /health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          grep -q '"status":"ok"' <&3
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on: [core]
+
+  mcp:
+    image: rustok-mcp:v0.1.0
+    container_name: rustok-mcp
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3002:3001"   # loopback test port
+    environment:
+      RUSTOK_MCP_HOST: "0.0.0.0"
+      RUSTOK_MCP_PORT: "3001"
+      RUSTOK_MCP_GATEWAY_URL: "http://rustok-gateway:3000"
+      RUSTOK_MCP_API_KEY: ${RUSTOK_MCP_API_KEY:?}
+      RUSTOK_MCP_INBOUND_API_KEY: ${RUSTOK_MCP_INBOUND_API_KEY:?}
+    networks: [rustokv2]
+    depends_on: [gateway]
+
+volumes:
+  rustok-data:
+
+networks:
+  rustokv2:
+    driver: bridge
+  shared:
+    name: deploy_default
+    external: true
