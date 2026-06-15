@@ -105,17 +105,23 @@ meta #20). Optional remaining: PR-5.3 Postgres.
 
 ---
 
-## 5. Current state (2026-06-14)
+## 5. Current state (2026-06-15)
 
 - All core gates green; full chain **MCP → Gateway → Core** verified end-to-end
   against real mainnet (a real Aave v3 position decodes through `get_positions`).
 - **Production cutover done:** `api.rustokwallet.com` now serves the **new stack**
   (was the v1 monolith). See §6.
-- **Audit consumer P1 resolved & deployed** (2026-06-14, #55 + #56) — prod core
-  rebuilt from `main` and redeployed; idle-read timeouts gone, audit logging
-  healthy. See §8.
-- MCP at feature parity with the deployed ClawHub skill — but the **published
-  ClawHub skill itself is not yet updated** (see §8).
+- **"Replace ClawHub" shipped (2026-06-15):** the `rustok-wallet` all-in-one image
+  is **public** on GHCR (`:latest` / `:v0.1.0`); the ClawHub skill
+  `temrjan/rustok-wallet` is republished at **0.3.0** (over the old 0.2.2). A
+  standard MCP client gets all 6 tools out of the box (capability fix, mcp #30).
+  `rustok-core` image stays **private** (binary-only; the all-in-one is
+  self-contained). Public image smoke-verified (anonymous pull → 6 tools).
+- **Audit consumer P1 resolved & deployed** (#55 + #56) and the **gateway↔core
+  startup race fixed (core #57, lazy tonic channel) & deployed** — `/health` now
+  reports `core: serving`. See §8.
+- Proprietary **EULA** in place (governing law: Russian Federation, core #58) —
+  it gates the public image visibility.
 
 ---
 
@@ -141,18 +147,25 @@ Port 22 closed.
 - **Old monolith** `rustok-api`: **stopped, restart=no, image + `/opt/rustok/deploy`
   compose retained** for rollback (remove after ~24–48h stability).
 
-**Image delivery:** built locally (`sg docker build`) and shipped via
+**Image delivery (prod):** built locally (`sg docker build`) and shipped via
 `docker save | ssh | docker load` — core source never touches the server (stays
 private; no registry/token needed).
+
+**Public distribution (GHCR):** `ghcr.io/rustok-org/rustok-wallet` (**public**) +
+`ghcr.io/rustok-org/rustok-core` (**private**) were built locally and pushed
+directly to GHCR. The `docker-publish` / `wallet-publish` Actions are `v*`-tag
+gated but were blocked by the private-repo Actions-minute limit; a local
+build + push avoids it ($0, source stays private). Re-enable the workflows once
+minutes reset.
 
 **Rollback (until the monolith is deleted):** restore `Caddyfile.bak` → `caddy
 reload` → `docker start rustok-api`.
 
 **Core-image rollback:** each deploy also tags the image `rustok-core:main-<sha>`
 (immutable) alongside the moving `v0.1.0`. To revert a bad core deploy, retag the
-prior `main-<sha>` as `v0.1.0` and `up -d core gateway`. **Recreating core and
-gateway together can hit the startup race in §8.3 — restart `gateway` after core
-is listening.**
+prior `main-<sha>` as `v0.1.0` and `up -d core gateway`. (The startup race is
+fixed — the gateway uses a lazy, reconnecting tonic channel (#57), so no manual
+gateway restart is needed after a recreate.)
 
 **Deploy/cutover model:** new stack brought up alongside, verified on a loopback
 test port, then Caddy `reverse_proxy` repointed + graceful `caddy reload`
@@ -181,41 +194,35 @@ test port, then Caddy `reverse_proxy` repointed + graceful `caddy reload`
 
 ## 8. Where we're going (next)
 
-**Immediate — finish "replace ClawHub" (Phase 7, self-custody distribution):**
-1. **De-v1-ify the `mcp` skill/distribution** ✅ mostly done — #28 removed the
-   dead `rustok-agent-mcp` release workflow + dropped-policy `policy.json` and
-   rewrote SECURITY.md/CHANGELOG/PR template for v2; #29 (PR-7.1b) ships the
-   self-custody **all-in-one stdio image** (Core+Gateway+MCP in one `docker run
-   -i`, keys in the user's local volume) + `wallet-publish.yml`; onboarding
-   (`create_wallet` + recovery mnemonic) is core #53 (PR-7.3). **Remaining:** tag
-   a `v*` release so the public Core image publishes (follow-up 6), then the
-   **Captain publishes the skill via the ClawHub web UI**.
+**"Replace ClawHub" — ✅ DONE (2026-06-15):**
+- De-v1-ified mcp skill/distribution (#28, #29) + onboarding (core #53);
+  **capability grant fixed** for standard stdio clients (mcp #30); README de-v1
+  (mcp #31); skill version 0.3.0 (mcp #34).
+- Proprietary EULA, governing law RF (core #58); publish-workflow SHA pins fixed
+  (core #59 + mcp #33).
+- Images built locally + pushed to GHCR: `rustok-wallet` **public**, `rustok-core`
+  private. Skill republished on **ClawHub at 0.3.0** (> 0.2.2). Public image
+  smoke-verified (anonymous pull → all 6 tools for a standard MCP client).
 
-**Operational follow-ups (post-cutover):**
-2. ~~**P1 — audit consumer** dropped events on idle reads~~ ✅ **resolved &
-   deployed 2026-06-14** — #55 (resilient consumer, no longer dies on transient
-   Redis errors) + #56 (`response_timeout` 7s > the 5s `XREAD BLOCK`, so idle
-   reads return empty instead of timing out client-side). Prod rebuilt from
-   `main` + redeployed; verified `audit stream read failed` = 0.
-3. **P1 (new) — gateway↔core startup race:** the Gateway connects to Core
-   eagerly **once** at boot and does **not** retry; if Core's gRPC isn't
-   listening yet (e.g. core+gateway recreated together), the Gateway logs
-   "running without downstream" and serves `core_unavailable` until manually
-   restarted. Workaround: restart `gateway` after core is up. Fix: a reconnecting
-   tonic channel (lazy connect) or `depends_on: service_healthy` gating in the
-   compose. (core/gateway + meta compose.)
-4. **Alchemy RPC:** swap the public RPCs for an Alchemy key (edit
-   `/opt/rustok/deploy-v2/.env`, `docker compose up -d core`).
-5. **Reproducibility:** commit the deploy artifacts (`docker-compose` v2 +
+**Operational — resolved:**
+- ~~audit consumer P1~~ ✅ #55 + #56, deployed.
+- ~~gateway↔core startup race~~ ✅ **fixed (core #57, lazy/reconnecting tonic
+  channel) & deployed** — `/health` reports `core: serving`; no manual gateway
+  restart on a core/gateway recreate.
+
+**Remaining follow-ups:**
+1. **Alchemy RPC:** swap the public RPCs for an Alchemy key (edit
+   `/opt/rustok/deploy-v2/.env`, `docker compose up -d core`). Needs the key.
+2. **Reproducibility:** commit the deploy artifacts (`docker-compose` v2 +
    `Caddyfile-v2`) into `meta` (currently only on the server).
-6. **Publish the public Core image:** #54 publishes `ghcr.io/<owner>/rustok-core`
-   on `v*` tags, but **no `v*` tag exists yet** → the mcp self-custody all-in-one
-   image (#29), which pulls those binaries, can't be built/pulled by users until
-   a version is tagged.
-7. **Remove the old monolith** after 24–48h of stability.
+3. **Remove the old monolith** after 24–48h of stability (cutover 2026-06-14).
+4. **GH Actions Node 20→24:** the docker actions (v3.10.0/v5.7.0/v6.16.0) run on
+   Node 20, deprecated 2026-06-16 — bump to Node24-compatible versions.
+5. **Re-enable the GHCR publish workflows** once Actions minutes reset (or raise
+   the spending limit) — the manual local push is a one-off.
 
 **Later / optional:**
-8. PR-5.3 Postgres migration. LLM brain (`llm` repo, stack decision pending).
+6. PR-5.3 Postgres migration. LLM brain (`llm` repo, stack decision pending).
    Mobile rebuild. Hardware signers, swap aggregation (deferred per roadmap).
 
 ---

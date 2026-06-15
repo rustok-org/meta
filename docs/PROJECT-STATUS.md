@@ -1,12 +1,12 @@
 # Project Status — Rustok Org
 
-> Updated: 2026-06-14  
+> Updated: 2026-06-15  
 > Read this at session start to understand where we are.  
 > Phase numbering follows `core/docs/CORE-MCP-ROADMAP.md` (source of truth for the MVP roadmap).
 
 ---
 
-## Current Phase: Phases 0–6.1 ✅ + production cutover done → Phase 7 (Self-Custody Distribution) in progress
+## Current Phase: Phases 0–7 ✅ — self-custody distribution SHIPPED (ClawHub skill 0.3.0, public image); prod current
 
 **Roadmap goal:** Functional Core + Gateway + MCP Server = minimum viable product.
 
@@ -20,8 +20,8 @@
 | 4.5 — Core Real Integration | gRPC stub → real wallet/router/sign/provider | ✅ #38, #40, #41, #42, #43 (plan #39) |
 | 5 — Production Hardening | docker-compose-full, observability, TLS | ✅ full compose meta #11; MCP inbound auth mcp #24; Caddy TLS meta #15; **observability COMPLETE** (logs+traces+metrics, PR-5.2a/b/c/d); postgres (5.3) still optional/pending |
 | 6.1 — DeFi positions | Aave v3 + ERC-4626 `get_positions` | ✅ core #52, mcp #27 (clean-room port of v1 agent-dapps) |
-| 7 — Self-Custody Distribution | onboarding, public image, all-in-one MCP image, ClawHub republish | 🔄 onboarding ✅ core #53 (PR-7.3); GHCR publish workflow ✅ core #54 (PR-7.2, **no `v*` tag pushed yet**); de-v1-ify ✅ mcp #28; all-in-one stdio image ✅ mcp #29 (PR-7.1b); **ClawHub web republish pending** |
-| Production cutover | new stack on `api.rustokwallet.com` | ✅ done 2026-06-14; audit-consumer fixes #55/#56 built & deployed; monolith stopped (retained for rollback) |
+| 7 — Self-Custody Distribution | onboarding, public image, all-in-one MCP image, ClawHub republish | ✅ **SHIPPED 2026-06-15** — onboarding core #53; capability-grant fix mcp #30; de-v1-ify mcp #28/#31; all-in-one stdio image mcp #29; EULA core #58 (RF); SHA-pin fix core #59/mcp #33; images on GHCR (`rustok-wallet` public, `rustok-core` private); **ClawHub skill 0.3.0** (mcp #34, > 0.2.2), smoke-verified |
+| Production cutover | new stack on `api.rustokwallet.com` | ✅ done 2026-06-14; audit-consumer #55/#56 + gateway lazy-channel #57 built & deployed; monolith stopped (retained for rollback) |
 
 **Core workspace (13 crates):** `types`, `crypto`, `keyring`, `provider`, `router`, `txguard`, `sign`, `audit`, `events`, `wallet`, `gateway`, `grpc`, `positions` (PR-6.1) (~190 `#[test]` functions as of PR #43; positions added more).
 
@@ -35,21 +35,20 @@
 
 | Task | Repo | Blocker |
 |------|------|---------|
-| Phase 7 finish: tag `v*` → publish public Core image; then republish ClawHub skill | core / mcp | needs version tag + Captain ClawHub web publish |
-| Fix gateway↔core startup race (eager connect, no retry) | core (gateway) / meta | see Blockers |
+| — (Phase 7 shipped; only cleanup tails remain — see Next Immediate Steps) | | |
 
 ---
 
 ## Next Immediate Steps
 
-### Primary: Finish Phase 7 (self-custody distribution)
-1. **Tag a `v*` release on `core`** → triggers #54 to publish
-   `ghcr.io/<owner>/rustok-core`; the mcp all-in-one image (#29) depends on it.
-2. **Captain republishes the skill on ClawHub** (web UI) once the image is live.
-3. **Fix the gateway↔core startup race** (eager connect, no retry) — reconnecting
-   tonic channel or `depends_on: service_healthy` in compose.
-4. **Reproducibility:** commit deploy-v2 compose + `Caddyfile-v2` into `meta`.
-5. **Remove the old monolith** after 24–48h prod stability.
+### Primary: cleanup tails (Phase 7 shipped)
+1. **GH Actions Node 20→24:** bump the docker actions (v3.10.0/v5.7.0/v6.16.0 run on
+   Node 20, deprecated 2026-06-16) in `docker-publish` (core) + `wallet-publish` (mcp).
+2. **Reproducibility:** commit deploy-v2 compose + `Caddyfile-v2` into `meta`.
+3. **Remove the old monolith** (`rustok-api`) after 24–48h prod stability (cutover 2026-06-14).
+4. **Alchemy RPC:** swap the public RPCs for an Alchemy key (needs the key) —
+   `/opt/rustok/deploy-v2/.env` → `docker compose up -d core`.
+5. **Re-enable GHCR publish workflows** once Actions minutes reset (manual local push was a one-off).
 
 ### Done — Phase 5 Production Hardening (PR-5.3 Postgres is the only optional remainder)
 1. ~~**PR-5.1 remainder** — reverse proxy + SSL~~ ✅ **done** — Caddy TLS overlay
@@ -97,8 +96,6 @@
 
 | Blocker | Impact | Resolution |
 |---------|--------|------------|
-| Gateway↔core startup race (eager connect, no retry) | Recreating core+gateway together → gateway serves `core_unavailable` until restarted | Workaround: restart `gateway` after core is listening. Fix: reconnecting tonic channel / compose `depends_on: service_healthy`. |
-| Public Core image not published to GHCR | mcp self-custody all-in-one image (#29) can't pull Core binaries | Tag a `v*` release on `core` → #54 publishes the image. |
 | GitHub Free — no branch protection for private repos (`core`) | Can accidentally push to `main` | **Mitigated** — pre-push hook + process discipline. |
 | `uniffi` FFI bridge does not exist (no crate) | Mobile cannot call core | Low priority until Mobile phase. Needs `uniffi-bindgen-react-native` scaffold. |
 | `simulateAssetChanges` not implemented in provider | Cannot preview swap/stake asset changes | Documented in `meta/docs/ALCHEMY-INTEGRATION.md`. Deferred to provider v2. |
@@ -135,6 +132,7 @@
 | 2026-06-14 | **PR-6.1 DeFi positions:** clean-room port of v1 `agent-dapps` — core `crates/positions` (Aave v3 + ERC-4626) + `GetPositions` gRPC + gateway `/api/v1/wallet/positions` (core #52), mcp `get_positions` tool gated READ_WALLET (mcp #27). Live full-chain e2e vs a real mainnet Aave position. **MCP at parity with ClawHub.** |
 | 2026-06-14 | **Phase 7 self-custody distribution:** onboarding `create_wallet`+recovery mnemonic (core #53, PR-7.3); public Core image → GHCR on `v*` tags (core #54, PR-7.2); mcp de-v1-ify (#28) + all-in-one stdio wallet image (#29, PR-7.1b). |
 | 2026-06-14 | **Audit consumer P1 fixed + deployed:** resilient consumer (core #55) + block-compatible `response_timeout` (core #56); prod core rebuilt from `main` & redeployed (core+gateway), verified `audit stream read failed`=0, agent wallet `0x0C58…` intact. Found + worked around the gateway↔core startup race. |
+| 2026-06-15 | **"Replace ClawHub" SHIPPED:** capability-grant fix for standard stdio clients (mcp #30) + README de-v1 (mcp #31); proprietary EULA, governing law RF (core #58); gateway↔core lazy/reconnecting channel (core #57) — race fixed & **deployed to prod** (`/health` core:serving, no manual restart); publish-workflow SHA-pin fix (core #59, mcp #33); skill version 0.3.0 (mcp #34). Images built locally + pushed to GHCR (`rustok-wallet` **public**, `rustok-core` private; Actions minutes were exhausted); **ClawHub skill republished at 0.3.0** (> 0.2.2); public image smoke-verified (anon pull → 6 tools). |
 
 ---
 
@@ -142,8 +140,8 @@
 
 | Repo | Visibility | Stack | State |
 |------|-----------|-------|-------|
-| `core` | Private | Rust 2024 (13 crates) | Phases 0–6.1 done + prod-deployed; real gRPC + Axum Gateway |
-| `mcp` | Public | Python 3.12 + FastAPI + uv | Complete: protocol/SSE/stdio/capabilities + 6 tools real (incl. `get_positions`, PR-6.1), Docker image |
+| `core` | Private | Rust 2024 (13 crates) | Phases 0–7 done; prod-deployed (gateway lazy-channel #57); proprietary EULA (RF); image on GHCR (private) |
+| `mcp` | Public | Python 3.12 + FastAPI + uv | Complete: 6 tools, stdio process-trusted (all caps by default); all-in-one wallet image **public on GHCR**; ClawHub skill **0.3.0** |
 | `mobile` | Public | React Native 0.76 + TS | Scaffold only (placeholder App.tsx) |
 | `llm` | Public (docs say private!) | TBD | Scaffold only; stack undecided |
 | `meta` | Public | Docs / Docker | This file + specs |
@@ -164,6 +162,7 @@
 | 2026-06-02–03 | **Phase 4.5 Core Real Integration:** WalletCore crate + full gRPC wiring (#38–#43) |
 | 2026-06-10 | Workstation re-clone; docs sync (core #45, meta #12); **PR-3.5 closed** (core #44 + mcp #22, e2e verified via stdio); full-stack compose (meta #11); deny.toml RUSTSEC-2026-0173; mcp smoke test fix |
 | 2026-06-14 | **PR-6.1 + Phase 7 + prod deploy:** DeFi positions (core #52, mcp #27); self-custody onboarding (core #53), GHCR publish workflow (core #54), mcp de-v1-ify (#28) + all-in-one image (#29); audit-consumer #55/#56 built & redeployed to prod (verified); docs sync (meta #21 overview + this status). |
+| 2026-06-15 | **"Replace ClawHub" shipped + tails:** capability fix (mcp #30), README de-v1 (#31), EULA RF (core #58), gateway lazy-channel (core #57, deployed to prod), publish-workflow SHA fix (core #59/mcp #33), skill 0.3.0 (mcp #34); GHCR images (wallet public / core private) via local build+push (Actions minutes hit); ClawHub republished 0.3.0; docs sync (meta this PR). |
 
 ---
 
