@@ -1,0 +1,28 @@
+# Cutover Caddyfile — api.rustokwallet.com now points at the new Gateway
+# (Core+Gateway+MCP stack), replacing the old rustok-api monolith.
+# aiwell.dev static site is preserved unchanged.
+
+api.rustokwallet.com {
+	# Access logs to stdout (docker logs rustok-caddy) so we can observe any
+	# consumer hitting the new backend post-cutover and catch broken integrations.
+	log {
+		format json
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+	}
+
+	reverse_proxy rustok-gateway:3000
+}
+
+aiwell.dev, www.aiwell.dev {
+	root * /var/www/aiwell.dev
+	file_server
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+	}
+}
