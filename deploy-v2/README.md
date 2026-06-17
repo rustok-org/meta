@@ -2,7 +2,7 @@
 
 Mirror of `/opt/rustok/deploy-v2/` on the prod host (`ssh rustok-prod`), committed
 for reproducibility. The new stack (compose project `rustokv2`): Core + Gateway +
-MCP + Redis, fronted by Caddy on `api.rustokwallet.com`.
+MCP, fronted by Caddy on `api.rustokwallet.com`.
 
 - `docker-compose.yml` — the deployed compose (env-interpolated; **no secrets**).
 - `Caddyfile-v2` — TLS reverse-proxy config for `api.rustokwallet.com`.

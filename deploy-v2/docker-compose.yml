@@ -1,19 +1,12 @@
 name: rustokv2
 
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: rustok-redis
-    restart: unless-stopped
-    networks: [rustokv2]
-
   core:
     image: rustok-core:v0.1.0
     container_name: rustok-core
     restart: unless-stopped
     environment:
       RUSTOK_GRPC_ADDR: "0.0.0.0:50051"
-      RUSTOK_REDIS_URL: "redis://rustok-redis:6379"
       RUSTOK_KEYRING_PASSWORD: ${RUSTOK_KEYRING_PASSWORD:?}
       RUSTOK_ALLOWED_CHAINS: "1,8453"
       RUSTOK_RPC_URLS_1: "https://ethereum-rpc.publicnode.com"
