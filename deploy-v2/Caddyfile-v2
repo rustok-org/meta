@@ -12,6 +12,17 @@ api.rustokwallet.com {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
+		Content-Security-Policy "default-src 'none'; frame-ancestors 'none'"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		X-XSS-Protection "0"
+		-Server
+	}
+
+	# Cap request bodies — MCP JSON-RPC messages are small; blocks large-POST
+	# abuse (review #7). Raise if a future tool needs bigger payloads.
+	request_body {
+		max_size 1MB
 	}
 
 	reverse_proxy rustok-gateway:3000
