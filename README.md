@@ -3,7 +3,7 @@
 Shared infrastructure and documentation.
 
 ## Structure
-- `docker-compose.yml` — base stack (MCP → Gateway → Core + Redis), loopback-only
+- `docker-compose.yml` — base stack (MCP → Gateway → Core), loopback-only
 - `docker-compose.prod.yml` — prod overlay: Caddy TLS termination + required inbound auth
 - `Caddyfile` — public TLS entry point (reverse proxy to MCP)
 - `docs/` — architecture specs and plans
@@ -16,7 +16,7 @@ Shared infrastructure and documentation.
 RUSTOK_KEYRING_PASSWORD=... docker compose up -d
 ```
 
-Gateway on `127.0.0.1:3000`, MCP on `127.0.0.1:3001`. Core and Redis publish no
+Gateway on `127.0.0.1:3000`, MCP on `127.0.0.1:3001`. Core publishes no
 ports. MCP inbound auth is disabled (it logs a warning) — fine for loopback.
 
 ### Production (TLS via Caddy)

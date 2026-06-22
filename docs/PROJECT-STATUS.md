@@ -1,6 +1,6 @@
 # Project Status — Rustok Org
 
-> Updated: 2026-06-15  
+> Updated: 2026-06-22  
 > Read this at session start to understand where we are.  
 > Phase numbering follows `core/docs/CORE-MCP-ROADMAP.md` (source of truth for the MVP roadmap).
 
@@ -23,7 +23,7 @@
 | 7 — Self-Custody Distribution | onboarding, public image, all-in-one MCP image, ClawHub republish | ✅ **SHIPPED 2026-06-15** — onboarding core #53; capability-grant fix mcp #30; de-v1-ify mcp #28/#31; all-in-one stdio image mcp #29; EULA core #58 (RF); SHA-pin fix core #59/mcp #33; images on GHCR (`rustok-wallet` public, `rustok-core` private); **ClawHub skill 0.3.0** (mcp #34, > 0.2.2), smoke-verified |
 | Production cutover | new stack on `api.rustokwallet.com` | ✅ done 2026-06-14; audit-consumer #55/#56 + gateway lazy-channel #57 built & deployed; monolith stopped (retained for rollback) |
 
-**Core workspace (13 crates):** `types`, `crypto`, `keyring`, `provider`, `router`, `txguard`, `sign`, `audit`, `events`, `wallet`, `gateway`, `grpc`, `positions` (PR-6.1) (~190 `#[test]` functions as of PR #43; positions added more).
+**Core workspace (12 crates):** `types`, `crypto`, `keyring`, `provider`, `router`, `txguard`, `sign`, `audit`, `wallet`, `gateway`, `grpc`, `positions` (PR-6.1) (~190 `#[test]` functions as of PR #43; positions added more). The Phase-4 `events` crate (Redis Streams) was removed 2026-06-17 (core #63/#64).
 
 **End-to-end chain works with real data:** MCP → Gateway → Core returns real address, balances, `tx_hash`, EIP-191 signatures (Phase 4.5 gate passed). All 5 original MCP tools are real since 2026-06-10 (read path: Gateway `GET /api/v1/wallet/context` + `/balance`, core #44; MCP wiring, mcp #22 — verified end-to-end via stdio). Full stack runs via `meta/docker-compose.yml` (meta #11).
 
@@ -42,13 +42,13 @@
 ## Next Immediate Steps
 
 ### Primary: cleanup tails (Phase 7 shipped)
-1. **GH Actions Node 20→24:** bump the docker actions (v3.10.0/v5.7.0/v6.16.0 run on
-   Node 20, deprecated 2026-06-16) in `docker-publish` (core) + `wallet-publish` (mcp).
-2. **Reproducibility:** commit deploy-v2 compose + `Caddyfile-v2` into `meta`.
-3. **Remove the old monolith** (`rustok-api`) after 24–48h prod stability (cutover 2026-06-14).
+1. ~~**GH Actions Node 20→24**~~ ✅ **done** — core `docker-publish` (#66), meta `checkout` v6.0.3 (#23); mcp workflows already pin Node-24-era actions (`actions/checkout@v6.0.3`, `docker/build-push-action@v7.2.0`).
+2. ~~**Reproducibility:** commit deploy-v2 compose + `Caddyfile-v2` into `meta`~~ ✅ **done** (meta #24; Caddyfile-v2 security headers + body cap #26).
+3. **Remove the old monolith** (`rustok-api`) after 24–48h prod stability (cutover 2026-06-14) — *server-side, verify.*
 4. **Alchemy RPC:** swap the public RPCs for an Alchemy key (needs the key) —
    `/opt/rustok/deploy-v2/.env` → `docker compose up -d core`.
-5. **Re-enable GHCR publish workflows** once Actions minutes reset (manual local push was a one-off).
+5. **Verify prod is on the post-06-15 core** (#63/#64 Redis removal, #65 gateway hardening, #67 graceful exit) — the repo carries them; confirm the running stack matches and Redis is actually gone from the host.
+6. **Re-enable GHCR publish workflows** once Actions minutes reset (manual local push was a one-off; mcp `wallet-publish` is currently manual-trigger #45).
 
 ### Done — Phase 5 Production Hardening (PR-5.3 Postgres is the only optional remainder)
 1. ~~**PR-5.1 remainder** — reverse proxy + SSL~~ ✅ **done** — Caddy TLS overlay
@@ -133,6 +133,7 @@
 | 2026-06-14 | **Phase 7 self-custody distribution:** onboarding `create_wallet`+recovery mnemonic (core #53, PR-7.3); public Core image → GHCR on `v*` tags (core #54, PR-7.2); mcp de-v1-ify (#28) + all-in-one stdio wallet image (#29, PR-7.1b). |
 | 2026-06-14 | **Audit consumer P1 fixed + deployed:** resilient consumer (core #55) + block-compatible `response_timeout` (core #56); prod core rebuilt from `main` & redeployed (core+gateway), verified `audit stream read failed`=0, agent wallet `0x0C58…` intact. Found + worked around the gateway↔core startup race. |
 | 2026-06-15 | **"Replace ClawHub" SHIPPED:** capability-grant fix for standard stdio clients (mcp #30) + README de-v1 (mcp #31); proprietary EULA, governing law RF (core #58); gateway↔core lazy/reconnecting channel (core #57) — race fixed & **deployed to prod** (`/health` core:serving, no manual restart); publish-workflow SHA-pin fix (core #59, mcp #33); skill version 0.3.0 (mcp #34). Images built locally + pushed to GHCR (`rustok-wallet` **public**, `rustok-core` private; Actions minutes were exhausted); **ClawHub skill republished at 0.3.0** (> 0.2.2); public image smoke-verified (anon pull → 6 tools). |
+| 2026-06-17→19 | **Redis decommission + post-ship hardening:** authoritative SQLite audit, **Redis event path removed** (core #63, 06-17), **Redis decommissioned from the new stack** (core #64, 06-17; deploy-v2 meta #25, 06-17) → `events` crate dropped (**13→12 crates**); gateway startup + CORS hardening (core #65, I6/I7, 06-18); graceful exit on an unknown `core-server` subcommand (core #67, 06-18); CI to **Node 24** docker-publish (core #66) + drop Coverage & macOS/iOS cross-check (core #68, 06-18); Caddyfile-v2 security headers & body cap (meta #26, 06-18); mcp — skill 0.3.1 (#41) / 0.3.2 (#44), keyring-password-in-argv fix (#42), ephemeral MCP API key in entrypoint (direct commit `2dc3bb9`), `wallet-publish` manual-trigger (#45, 06-19). *(Repo state; confirm prod redeploy of the core changes.)* |
 
 ---
 
@@ -140,7 +141,7 @@
 
 | Repo | Visibility | Stack | State |
 |------|-----------|-------|-------|
-| `core` | Private | Rust 2024 (13 crates) | Phases 0–7 done; prod-deployed (gateway lazy-channel #57); proprietary EULA (RF); image on GHCR (private) |
+| `core` | Private | Rust 2024 (12 crates) | Phases 0–7 done; prod-deployed (gateway lazy-channel #57); Redis decommissioned (#63/#64); proprietary EULA (RF); image on GHCR (private) |
 | `mcp` | Public | Python 3.12 + FastAPI + uv | Complete: 6 tools, stdio process-trusted (all caps by default); all-in-one wallet image **public on GHCR**; ClawHub skill **0.3.0** |
 | `mobile` | Public | React Native 0.76 + TS | Scaffold only (placeholder App.tsx) |
 | `llm` | Public (docs say private!) | TBD | Scaffold only; stack undecided |

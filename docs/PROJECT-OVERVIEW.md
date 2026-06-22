@@ -1,6 +1,6 @@
 # Rustok — Project Overview (single source of truth)
 
-> **Updated:** 2026-06-14
+> **Updated:** 2026-06-22
 > **Purpose:** the master orientation doc. Where everything lives, where we came
 > from, what's running now, and where we're going. Read this first.
 > Detailed specs live in the per-repo docs/specs; this ties them together.
@@ -44,9 +44,9 @@ audit, txguard risk analysis.
   standards every repo's AGENTS.md references. `standards/`, `commands/` (slash
   commands), `agents/` (fleet reviewers). Load before writing code.
 
-### Core crates (`core/crates/`, 13)
+### Core crates (`core/crates/`, 12)
 `types` · `crypto` · `keyring` · `provider` · `router` · `txguard` · `sign` ·
-`wallet` · `audit` · `events` · `grpc` (gRPC server + binary `core-server`) ·
+`wallet` · `audit` · `grpc` (gRPC server + binary `core-server`) ·
 `gateway` (Axum HTTP + binary `gateway`) · `positions` (DeFi positions, PR-6.1).
 
 ---
@@ -64,7 +64,7 @@ Gateway     (core/crates/gateway, Axum)         ── auth, rate-limit, CORS, /
         │  gRPC (tonic)
         ▼
 Core        (core/crates/grpc, tonic server)    ── crypto/keyring/provider/router/txguard/sign/positions
-        │                                          publishes tx events → Redis Streams → audit (SQLite)
+        │                                          writes each action directly → audit (SQLite WAL, append-only)
         ▼
 Ethereum RPC (Alchemy primary, public RPC fallback, eth_call)
 ```
@@ -76,6 +76,10 @@ Ethereum RPC (Alchemy primary, public RPC fallback, eth_call)
   `/api/v1/*` (key = `RUSTOK_MCP_API_KEY`); `/health` open.
 - **MCP tools (6):** `get_wallet_context`, `get_balances`, `get_positions`,
   `preview_send`, `execute_send`, `sign_message` — capability-gated.
+- **Audit:** Core writes each wallet action to an append-only **SQLite WAL** log
+  (authoritative single source of truth). *The Phase-4 Redis Streams event bus was
+  decommissioned 2026-06-17 (core #63/#64) — the `events` crate and the `redis`
+  service are gone.*
 - **Observability (opt-in):** OTLP push (traces+metrics+logs) → Alloy → Tempo /
   Prometheus / Loki → Grafana. Enabled via `RUSTOK_OTLP_ENDPOINT`. Off by default.
 
@@ -105,7 +109,7 @@ meta #20). Optional remaining: PR-5.3 Postgres.
 
 ---
 
-## 5. Current state (2026-06-15)
+## 5. Current state (2026-06-15; Redis decommissioned 2026-06-17 — see §3 Audit)
 
 - All core gates green; full chain **MCP → Gateway → Core** verified end-to-end
   against real mainnet (a real Aave v3 position decodes through `get_positions`).
@@ -134,7 +138,7 @@ Port 22 closed.
 **Running (Docker):**
 - New stack — `/opt/rustok/deploy-v2/` (compose project `rustokv2`):
   `rustok-core`, `rustok-gateway` (test port `127.0.0.1:3001`), `rustok-mcp`
-  (`127.0.0.1:3002`), `rustok-redis`. Keystore in volume `rustokv2_rustok-data`
+  (`127.0.0.1:3002`). Keystore in volume `rustokv2_rustok-data`
   (agent wallet `0x0C58C2a797c1c6E966321cD76F3369E13a0357ae`). Secrets in
   `/opt/rustok/deploy-v2/.env` (chmod 600). RPC = public, chains `1,8453`.
 - `rustok-caddy` (caddy:2-alpine, 80/443) — TLS termination, certs in
@@ -232,7 +236,7 @@ test port, then Caddy `reverse_proxy` repointed + graceful `caddy reload`
 ```bash
 # Server
 ssh rustok-prod
-docker ps                                   # rustok-core/gateway/mcp/redis + caddy + (VPN)
+docker ps                                   # rustok-core/gateway/mcp + caddy + (VPN)
 docker compose -f /opt/rustok/deploy-v2/docker-compose.yml ps
 docker logs rustok-core --tail 50
 docker logs rustok-caddy --since 10m | grep api.rustokwallet.com   # access logs

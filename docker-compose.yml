@@ -1,10 +1,10 @@
-# Full Rustok stack: MCP (SSE) -> Gateway (REST) -> Core (gRPC) + Redis.
+# Full Rustok stack: MCP (SSE) -> Gateway (REST) -> Core (gRPC).
 #
 # Usage:
 #   RUSTOK_KEYRING_PASSWORD=... docker compose up -d
 #
 # Only Gateway (:3000) and MCP (:3001) are published, loopback-only.
-# Core and Redis publish no ports, so they are unreachable from the host;
+# Core publishes no ports, so it is unreachable from the host;
 # the internal network is NOT `internal: true` because Core needs egress
 # to blockchain RPC providers (Alchemy / public RPCs).
 
@@ -16,7 +16,6 @@ services:
     image: rustok-core:v0.1.0
     environment:
       RUSTOK_GRPC_ADDR: "0.0.0.0:50051"
-      RUSTOK_REDIS_URL: "redis://redis:6379"
       RUSTOK_KEYRING_PASSWORD: ${RUSTOK_KEYRING_PASSWORD}
       RUSTOK_ALLOWED_CHAINS: ${RUSTOK_ALLOWED_CHAINS:-1,8453}
       RUSTOK_ALCHEMY_API_KEY: ${RUSTOK_ALCHEMY_API_KEY:-}
@@ -30,9 +29,6 @@ services:
       - /tmp:noexec,nosuid,size=100m
     user: "1000:1000"
     restart: unless-stopped
-    depends_on:
-      redis:
-        condition: service_started
 
   gateway:
     image: rustok-core:v0.1.0
@@ -107,17 +103,6 @@ services:
     depends_on:
       gateway:
         condition: service_healthy
-
-  redis:
-    image: redis:7-alpine
-    networks:
-      - internal
-    # Hardening
-    read_only: true
-    tmpfs:
-      - /tmp:noexec,nosuid,size=100m
-    user: "999:999"
-    restart: unless-stopped
 
 volumes:
   rustok-data:
