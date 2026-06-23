@@ -116,9 +116,10 @@ PR-by-PR vertical, each = branch + CI + two gates. Small reversible slices: ever
 | Step | What | Why separate |
 |---|---|---|
 | **Spike** (done) | one live `/quote` (DUTCH_V2) — confirmed live shape + that our re-encode reproduces the API digest on a quote-time order | discovery, throwaway, kills the main unknown cheaply |
-| **PR-0** | this doc into `meta/docs` + reconcile with reality | source of truth must be versioned |
-| **PR-1** | read-path M0 (`get_wallet_context`/`positions` + Uniswap planning) — confirm/finish | the vertical reuses it; if ready, near no-op |
-| **PR-2** | narrow full-height vertical: glue → core sign through one **orchestrator** (sole route to signing) + **one load-bearing gate (minOut)** + freshness (refuse-when-stale, re-quote-before-submit, re-gate-on-requote). E2E on dev keyring, recover-verified | this is "full-height but narrow"; closes the no-bypass invariant |
+| **PR-0** ✅ | this doc into `meta/docs` + reconcile with reality | source of truth must be versioned |
+| **PR-1** ✅ | M0 read-path is **prod-shipped, verified** (core RPCs + mcp→gateway, live on `api.rustokwallet.com`) — no code; the read-only demo folds into PR-2 Slice 1's head | the wiring was already built + deployed; a hollow PR would be plan-worship |
+| **PR-2 Slice 1** ✅ | **hermetic** TS orchestrator (sole sign-route) — reconstruct-before-sign + recipient-aware minOut + freshness + dev-key sign-seam, recover-verified, 8-case E2E (no network / no submit) | high-risk logic first, isolated from the live stack |
+| **PR-2 Slice 2** | **live wiring** — gateway `sign_typed_data` route + gateway-HTTP `Signer` impl + remove the dead eip712 branch + E2E on a funded dev wallet (wallet-as-MCP) | mechanical transport (Q2 = via gateway); separate repo (core) |
 | **PR-3** | mainnet-fork harness + adversarial-order corpus | net-new foundation, reused by every gate |
 | **PR-4…N** | one gate per PR, full ceremony (grill → check → 2 reviews → security-review): destination-token (honeypot/fee-on-transfer on fork) → price cross-check DeFiLlama (fail-closed) → bounded approval → allowlist | security-critical; each PR = gate + fixtures proving rejection |
 | **Final** | M1 demo: green = a gate rejected a deliberately bad order | the plan's literal criterion |
@@ -147,5 +148,7 @@ Plain words: the plan is a living map, not a law — but when we leave the route
 
 ## Open forks (resolved by spike + design note, not frozen)
 
-1. **Where gates run + transport** (TS glue vs Python-MCP; gRPC direct vs via MCP) — design note in PR-2's lead-up.
+1. **Where gates run + transport — RESOLVED** (see the [Exposure-seam design note](./EXPOSURE-SEAM.md)):
+   orchestrator + gates live in the **TS glue** (Q1 = A); transport to core signing is **via the gateway**
+   (Q2 = B — core gRPC stays internal). The agent's only door = MCP `request_swap(intent)`.
 2. **Can UniswapX routing be forced at small size?** The spike showed small swaps route CLASSIC and only larger sizes route DUTCH_V2 — so a tiny mainnet UniswapX smoke may not be achievable without forcing the route. Resolve before the mainnet smoke.
