@@ -32,11 +32,28 @@ seam spans **TS glue ↔ gateway ↔ core gRPC**, and it must have exactly one r
   core gRPC stays **internal / non-public** (only the gateway is exposed at `api.rustokwallet.com`).
   A direct gRPC client would open a *second door* to core and bypass that boundary.
 
-- **Three F5 locks (no bypass to signing):**
-  1. the TS orchestrator is the **sole owner** of the route/credential to the sign operation;
-  2. the MCP exposes only **`request_swap(intent)`** — never `sign(hashes)`, never a direct
-     gRPC sign-client;
-  3. the **dead `eip712` branch** in the gateway's `sign_message` is **removed**.
+- **Three F5 locks (no bypass to signing) — with realization status.** The original three were stated
+  present-tense as if all locked; **two were not yet true**, so each now carries an honest status:
+  1. ~~the TS orchestrator is the **sole owner** of the route/credential to the sign operation~~ —
+     **RETRACTED (wrong-by-design).** The gateway gates **all** routes with one shared Bearer
+     (`RUSTOK_MCP_API_KEY`, key #2), so the orchestrator is **not** the sole owner of the sign
+     credential *even when fully built*. Honest replacement: **no-bypass holds for an honest,
+     capability-restricted agent — NOT for a holder of inbound key #1 absent the O1 bundle** (mTLS on
+     #1 + approval code-gate on the decoded order + server-side SSE capability restriction; see
+     [CREDENTIAL-LADDER.md](./CREDENTIAL-LADDER.md) "O1"). *(This retraction is the "O2" reconciliation.)*
+  2. the MCP exposes only **`request_swap(intent)`** — never `sign(hashes)`, never a direct gRPC
+     sign-client — **DESIGN-LOCKED, NOT YET LIVE.** `request_swap` does not exist in `mcp/src` yet, and
+     `sign_message` is still exposed as a tool (`mcp handlers.py:285`) with capability `EXECUTE_TX`
+     (`mcp capabilities.py:30`). Lands in **Slice 2c** (`request_swap`-only + the eip712-enum drop).
+  3. the **dead `eip712` branch** in the gateway's `sign_message` is **removed** — **DONE (gateway):**
+     shipped in Slice 2a (`core` #71, main `5dfc845`). The MCP **`eip712`-enum drop** (the tool schema
+     still advertising `eip712`) is **pending Slice 2c**.
+
+- **Credential residence (F6 closure).** The orchestrator runs **server-side** and holds **key #2 (a
+  service credential)** — that is **not** a personal-local key. The "personal / local / not on our
+  server" requirement applies **only to key #1** (the public client→MCP credential); the wallet itself
+  (keys #3/#4) is **not hosted externally**. Per-key target residence:
+  [CREDENTIAL-LADDER.md](./CREDENTIAL-LADDER.md).
 
 - **Single sign-route by construction:** the orchestrator has exactly one call site that can
   sign — an injected `Signer` seam. Enforced by test (runtime call-count + structural: the only
