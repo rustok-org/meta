@@ -117,8 +117,11 @@ meta #20). Optional remaining: PR-5.3 Postgres.
   (was the v1 monolith). See §6.
 - **"Replace ClawHub" shipped (2026-06-15):** the `rustok-wallet` all-in-one image
   is **public** on GHCR (`:latest` / `:v0.1.0`); the ClawHub skill
-  `temrjan/rustok-wallet` is republished at **0.3.0** (over the old 0.2.2). A
-  standard MCP client gets all 6 tools out of the box (capability fix, mcp #30).
+  `temrjan/rustok-wallet` is republished at **0.3.2** (over the old 0.2.2),
+  namespace kept as `@temrjan` to preserve the install base. A standard MCP
+  client gets all 6 tools out of the box (capability fix, mcp #30). The legacy
+  npm package `rustok-agent-mcp` (v1, AGPL) is being deprecated with a pointer —
+  the new wallet ships as a Docker image, not on npm.
   `rustok-core` image stays **private** (binary-only; the all-in-one is
   self-contained). Public image smoke-verified (anonymous pull → 6 tools).
 - **Audit consumer P1 resolved & deployed** (#55 + #56) and the **gateway↔core
