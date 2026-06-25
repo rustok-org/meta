@@ -120,7 +120,7 @@ meta #20). Optional remaining: PR-5.3 Postgres.
   `temrjan/rustok-wallet` is republished at **0.3.2** (over the old 0.2.2),
   namespace kept as `@temrjan` to preserve the install base. A standard MCP
   client gets all 6 tools out of the box (capability fix, mcp #30). The legacy
-  npm package `rustok-agent-mcp` (v1, AGPL) is being deprecated with a pointer —
+  npm package `rustok-agent-mcp` (v1, AGPL) is left as-is (obsolete/harmless) —
   the new wallet ships as a Docker image, not on npm.
   `rustok-core` image stays **private** (binary-only; the all-in-one is
   self-contained). Public image smoke-verified (anonymous pull → 6 tools).

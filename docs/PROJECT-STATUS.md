@@ -27,7 +27,7 @@
 
 **End-to-end chain works with real data:** MCP → Gateway → Core returns real address, balances, `tx_hash`, EIP-191 signatures (Phase 4.5 gate passed). All 5 original MCP tools are real since 2026-06-10 (read path: Gateway `GET /api/v1/wallet/context` + `/balance`, core #44; MCP wiring, mcp #22 — verified end-to-end via stdio). Full stack runs via `meta/docker-compose.yml` (meta #11).
 
-**DeFi positions shipped (PR-6.1, 2026-06-14):** a 6th MCP tool `get_positions` (Aave v3 + ERC-4626) — new core `crates/positions` + `GetPositions` gRPC + gateway `GET /api/v1/wallet/positions` (core #52), mcp tool gated by READ_WALLET (mcp #27). Clean-room port of v1 `agent-dapps`; best-effort, no price oracle. Verified live full-chain (MCP → Gateway → Core) against a real mainnet Aave v3 position. **The org MCP has replaced the legacy ClawHub distribution: `temrjan/rustok-wallet` is republished at 0.3.2 (Docker/stdio, `ghcr.io/rustok-org/rustok-wallet`); the namespace stays `@temrjan` to preserve the install base. The old npm package `rustok-agent-mcp` (v1, AGPL) is being deprecated with a pointer to the new distribution.**
+**DeFi positions shipped (PR-6.1, 2026-06-14):** a 6th MCP tool `get_positions` (Aave v3 + ERC-4626) — new core `crates/positions` + `GetPositions` gRPC + gateway `GET /api/v1/wallet/positions` (core #52), mcp tool gated by READ_WALLET (mcp #27). Clean-room port of v1 `agent-dapps`; best-effort, no price oracle. Verified live full-chain (MCP → Gateway → Core) against a real mainnet Aave v3 position. **The org MCP has replaced the legacy ClawHub distribution: `temrjan/rustok-wallet` is republished at 0.3.2 (Docker/stdio, `ghcr.io/rustok-org/rustok-wallet`); the namespace stays `@temrjan` to preserve the install base. The old npm package `rustok-agent-mcp` (v1, AGPL) is left as-is — npm is not a distribution channel for the new wallet, and the obsolete package is harmless.**
 
 ---
 
@@ -108,7 +108,7 @@
 |----------|---------|--------|
 | `llm` stack | Rust (Rig) vs Python (FastAPI + LangChain) | **Under review.** `meta/docs/LLM-ARCHITECTURE.md` recommends Rust (Rig) with gRPC isolation fallback; reconcile at LLM kickoff. |
 | `llm` repo visibility | AGENTS.md says private; repo is **public** on GitHub | Verify intent — flip visibility or fix docs. |
-| ClawHub/Smithery legacy skill (`temrjan/rustok-wallet`, ~323 downloads) | Keep / republish on Python MCP | **Resolved (2026-06-25).** Republished at 0.3.2 on the new MCP (Docker/stdio image); namespace stays `@temrjan` to preserve the install base. Legacy npm `rustok-agent-mcp` (v1, AGPL) being deprecated with a pointer; no npm publish target remains (the `publish-rustok` token is obsolete). |
+| ClawHub/Smithery legacy skill (`temrjan/rustok-wallet`, ~323 downloads) | Keep / republish on Python MCP | **Resolved (2026-06-25).** Republished at 0.3.2 on the new MCP (Docker/stdio image); namespace stays `@temrjan` to preserve the install base. Legacy npm `rustok-agent-mcp` (v1, AGPL) left as-is (obsolete/harmless) — npm is not a distribution channel for the new wallet; the `publish-rustok` token is obsolete. |
 | React Native version | 0.76 (current) vs latest | **Resolved:** Stay on 0.76 until Mobile phase. |
 | Hardware signers | Ledger, Keystone, air-gapped | After core v1.0 |
 | Swap integration | 1inch, 0x, CoW | After txguard v2 + `simulateAssetChanges` |
