@@ -39,7 +39,9 @@ seam spans **TS glue ↔ gateway ↔ core gRPC**, and it must have exactly one r
      (`RUSTOK_MCP_API_KEY`, key #2), so the orchestrator is **not** the sole owner of the sign
      credential *even when fully built*. Honest replacement: **no-bypass holds for an honest,
      capability-restricted agent — NOT for a holder of inbound key #1 absent the O1 bundle** (mTLS on
-     #1 + approval code-gate on the decoded order + server-side SSE capability restriction; see
+     #1 + approval code-gate on the decoded order (the **off-chain order-SIGN** gate — still pending
+     `request_swap` / lock #2; its **on-chain execute** analogue is code-landed dormant in Slice-1, live
+     in Slice-1b — see the O1-a bullet below) + server-side SSE capability restriction; see
      [CREDENTIAL-LADDER.md](./CREDENTIAL-LADDER.md) "O1"). *(This retraction is the "O2" reconciliation.)*
   2. the MCP exposes only **`request_swap(intent)`** — never `sign(hashes)`, never a direct gRPC
      sign-client — **DESIGN-LOCKED, NOT YET LIVE.** `request_swap` does not exist in `mcp/src` yet, and
@@ -48,6 +50,29 @@ seam spans **TS glue ↔ gateway ↔ core gRPC**, and it must have exactly one r
   3. the **dead `eip712` branch** in the gateway's `sign_message` is **removed** — **DONE (gateway):**
      shipped in Slice 2a (`core` #71, main `5dfc845`). The MCP **`eip712`-enum drop** (the tool schema
      still advertising `eip712`) is **pending Slice 2c**.
+
+- **On-chain execute-approval code-gate (O1-a) — CODE-LANDED in Slice-1, fail-closed-DISABLED.** The core
+  arbitrary-transaction handle (`PreviewTransaction` / `ExecuteTransaction`, Slice-1 — `core` #72)
+  **removes** the old un-gated `PreviewSend` / `ExecuteSend` (the prompt-only execute hole), so the
+  **only** on-chain execute path is `ExecuteTransaction`, which **rejects fail-closed unless it carries a
+  valid user approval** bound to the `preview_id` (transitively to the immutable signed bytes), verified
+  in-core **before the signer and before the one-shot preview is consumed**. In Slice-1, production ships
+  **no approval issuer**, so `ExecuteTransaction` **always rejects in prod** — the accept path is compiled
+  only under an off-by-default `test-approval` cargo feature, and a CI guard proves the release binary
+  contains **no approval-accepting code** by asserting the literal `rustok-test-approval:` is **absent**
+  from it (the durable invariant; the `approval-guard` job is the current mechanism). The issuer — the
+  Telegram-`initData` approval channel (authenticated against a secret the agent lacks) that makes a valid
+  approval issuable and thereby enables production execute — is **Slice-1b** (the un-gate).
+  **Scope — two distinct surfaces, don't conflate:** this gate is the **on-chain execute** surface
+  (generic calldata via `ExecuteTransaction`, approval bound to the decoded *transaction*). O1's "approval
+  code-gate **on the decoded order**" in its original framing is the **off-chain swap-SIGN** surface
+  (`request_swap` → `SignTypedData` over the decoded UniswapX order) — a **separate surface that is not
+  yet built** (`request_swap` does not exist in `mcp/src`; lock #2 above). So Slice-1 is the
+  execute-surface instantiation of the O1 principle "approval is a code-gate, not a prompt"; the
+  order-SIGN code-gate is still pending lock #2. Preview-time simulation (eth_call revert **tri-state** +
+  decode of `approve` / `transfer` / `transferFrom` / `setApprovalForAll` / `permit` / `Permit2.approve` /
+  `increaseAllowance`, with explicit field presence — extended in B1 preview-hardening, `core` #73)
+  surfaces WHO is authorized + whether the tx would fail, for informed approval.
 
 - **Credential residence (F6 closure).** The orchestrator runs **server-side** and holds **key #2 (a
   service credential)** — that is **not** a personal-local key. The "personal / local / not on our
