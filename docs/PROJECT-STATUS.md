@@ -1,12 +1,23 @@
 # Project Status — Rustok Org
 
-> Updated: 2026-06-22  
+> Updated: 2026-06-26  
 > Read this at session start to understand where we are.  
 > Phase numbering follows `core/docs/CORE-MCP-ROADMAP.md` (source of truth for the MVP roadmap).
 
 ---
 
-## Current Phase: Phases 0–7 ✅ — self-custody distribution SHIPPED (ClawHub skill 0.3.0, public image); prod current
+> ⚠️ **ПИВОТ 2026-06-25 → non-custodial device-signing.** Продукт развёрнут на on-device подпись
+> (ключ + аппрув на телефоне, Android-first; MCP = proposer, **keyless**). Источник истины:
+> ADR `core/.claude/decisions/2026-06-26-pivot-noncustodial-device-signing.md` + MASTER PLAN
+> `core/.claude/specs/2026-06-25-epic-noncustodial-device-signing-PLAN.md`.
+> Статус ниже (Phases 0–7, custodial-стек на `api.rustokwallet.com`, cutover 2026-06-14) — теперь
+> **исторический контекст custodial-эпохи**: custodial-прод = **F8-кандидат на ретайр** (ОТЛОЖЕНО,
+> «решить позже»; при ретайре — миграция ClawHub-юзеров). Сервер → pure-proposer keyless на Этапе 3.
+> **Эпик-прогресс: Этап 0 ЗАКРЫТ** (core PR #74, main `23bf736`: ADR + скелет `mobile-bindings`).
+
+---
+
+## Current Phase: Phases 0–7 ✅ — self-custody distribution SHIPPED (ClawHub skill 0.3.0, public image); prod current — **исторический/custodial; см. ПИВОТ-врезку выше**
 
 **Roadmap goal:** Functional Core + Gateway + MCP Server = minimum viable product.
 
