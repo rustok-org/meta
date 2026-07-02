@@ -1,5 +1,9 @@
 # Standards Map — Rustok Org
 
+> ⚠️ **Частично устарело — до разворота 2026-06-25 (custodial-эра).** Части про «ключ/подпись
+> на сервере» неактуальны: продукт развёрнут на non-custodial device-signing. Текущее состояние —
+> `PROJECT-STATUS.md`; незыблемое — `core/.claude/NORTH-STAR.md`. Держится как исторический контекст.
+
 > Quick reference: which Codex standard applies to which repo.
 > Full standards live in `~/Workspace/Codex/standards/` — read them before coding.
 

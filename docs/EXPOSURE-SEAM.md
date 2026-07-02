@@ -1,5 +1,9 @@
 # Exposure Seam — how the signing path is wired
 
+> ⚠️ **Частично устарело — до разворота 2026-06-25 (custodial-эра).** Части про «ключ/подпись
+> на сервере» неактуальны: продукт развёрнут на non-custodial device-signing. Текущее состояние —
+> `PROJECT-STATUS.md`; незыблемое — `core/.claude/NORTH-STAR.md`. Держится как исторический контекст.
+
 > Companion to [UNISWAP-INTEGRATION.md](./UNISWAP-INTEGRATION.md). Records the load-bearing
 > design decisions for **how an agent reaches EIP-712 signing without a bypass**. Source of
 > truth — changes go through a PR, not silent drift.

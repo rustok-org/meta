@@ -13,7 +13,9 @@
 > Статус ниже (Phases 0–7, custodial-стек на `api.rustokwallet.com`, cutover 2026-06-14) — теперь
 > **исторический контекст custodial-эпохи**: custodial-прод = **F8-кандидат на ретайр** (ОТЛОЖЕНО,
 > «решить позже»; при ретайре — миграция ClawHub-юзеров). Сервер → pure-proposer keyless на Этапе 3.
-> **Эпик-прогресс: Этап 0 ЗАКРЫТ** (core PR #74, main `23bf736`: ADR + скелет `mobile-bindings`).
+> **Живой статус эпика (этапы/слайсы/что дальше) — `core/.claude/PLAN-OF-RECORD.md`** (единый
+> источник, здесь НЕ дублируется во избежание дрейфа); незыблемое — `core/.claude/NORTH-STAR.md`;
+> статусы спек/ADR — `core/.claude/specs/INDEX.md`.
 
 ---
 
@@ -153,8 +155,8 @@
 | Repo | Visibility | Stack | State |
 |------|-----------|-------|-------|
 | `core` | Private | Rust 2024 (12 crates) | Phases 0–7 done; prod-deployed (gateway lazy-channel #57); Redis decommissioned (#63/#64); proprietary EULA (RF); image on GHCR (private) |
-| `mcp` | Public | Python 3.12 + FastAPI + uv | Complete: 6 tools, stdio process-trusted (all caps by default); all-in-one wallet image **public on GHCR**; ClawHub skill **0.3.0** |
-| `mobile` | Public | React Native 0.76 + TS | Scaffold only (placeholder App.tsx) |
+| `mcp` | Public | Python 3.12 + FastAPI + uv | Complete: 5 tools (`execute_send` dropped, mcp#49), stdio process-trusted (all caps by default); all-in-one wallet image **public on GHCR**; ClawHub skill **0.3.0** |
+| `mobile` | Public | React Native 0.85 + TS | Активная разработка (Этап 2: device wallet + онбординг-shell); живой статус → `core/.claude/PLAN-OF-RECORD.md` |
 | `llm` | Public (docs say private!) | TBD | Scaffold only; stack undecided |
 | `meta` | Public | Docs / Docker | This file + specs |
 

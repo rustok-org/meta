@@ -1,5 +1,9 @@
 # Core API Specification
 
+> ⚠️ **Частично устарело — до разворота 2026-06-25 (custodial-эра).** Части про «ключ/подпись
+> на сервере» неактуальны: продукт развёрнут на non-custodial device-signing. Текущее состояние —
+> `PROJECT-STATUS.md`; незыблемое — `core/.claude/NORTH-STAR.md`. Держится как исторический контекст.
+
 > **Status:** Draft — reflects current Rust crate APIs (Phase 1 complete)
 > **Target:** Mobile (FFI), LLM Brain (gRPC/REST), MCP (JSON-RPC)
 > **Date:** 2026-05-30 (updated 2026-05-31)

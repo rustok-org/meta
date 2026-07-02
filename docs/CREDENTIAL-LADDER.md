@@ -1,5 +1,9 @@
 # Credential Key-Ladder — where each secret lives
 
+> ⚠️ **Частично устарело — до разворота 2026-06-25 (custodial-эра).** Части про «ключ/подпись
+> на сервере» неактуальны: продукт развёрнут на non-custodial device-signing. Текущее состояние —
+> `PROJECT-STATUS.md`; незыблемое — `core/.claude/NORTH-STAR.md`. Держится как исторический контекст.
+
 > Companion to [EXPOSURE-SEAM.md](./EXPOSURE-SEAM.md). Records the **target residence** of each of
 > Rustok's credentials — "where the secret lives, how long, how scoped" — on proven, standard patterns.
 > Source of truth: changes go through a PR, not silent drift. Scope: **N=1** (one operator, one wallet;

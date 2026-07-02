@@ -1,5 +1,9 @@
 # Mobile UX Specification
 
+> ⚠️ **Частично устарело — до разворота 2026-06-25 (custodial-эра).** Части про «ключ/подпись
+> на сервере» неактуальны: продукт развёрнут на non-custodial device-signing. Текущее состояние —
+> `PROJECT-STATUS.md`; незыблемое — `core/.claude/NORTH-STAR.md`. Держится как исторический контекст.
+
 ## Principle: Chat-First, Not Wallet-First
 
 The app opens into a chat. The wallet is a tool the agent uses, not the main screen.

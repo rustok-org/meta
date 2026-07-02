@@ -1,5 +1,9 @@
 # Rustok — Project Overview (single source of truth)
 
+> ⚠️ **Частично устарело — до разворота 2026-06-25 (custodial-эра).** Части про «ключ/подпись
+> на сервере» неактуальны: продукт развёрнут на non-custodial device-signing. Текущее состояние —
+> `PROJECT-STATUS.md`; незыблемое — `core/.claude/NORTH-STAR.md`. Держится как исторический контекст.
+
 > **Updated:** 2026-06-22
 > **Purpose:** the master orientation doc. Where everything lives, where we came
 > from, what's running now, and where we're going. Read this first.

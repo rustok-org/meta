@@ -1,5 +1,9 @@
 # Uniswap Integration Plan
 
+> ⚠️ **Частично устарело — до разворота 2026-06-25 (custodial-эра).** Части про «ключ/подпись
+> на сервере» неактуальны: продукт развёрнут на non-custodial device-signing. Текущее состояние —
+> `PROJECT-STATUS.md`; незыблемое — `core/.claude/NORTH-STAR.md`. Держится как исторический контекст.
+
 **Reference integration: Uniswap × Rustok Wallet — the self-custody signing layer for agent-driven Uniswap execution.**
 
 > **Living document, not frozen law.** We follow Highest Effectiveness, not the plan when the two diverge — but every deviation is surfaced with a falsifiable reason and written back here (no silent drift). See [Principle: effectiveness over plan](#principle-effectiveness-over-plan).
