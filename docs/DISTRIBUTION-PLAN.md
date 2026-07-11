@@ -28,6 +28,15 @@ entry_point обязан существовать внутри архива — 
 ⚠️ Проверить: как two-window (`docker exec … rustok-console`) живёт при запуске контейнера
 Toolkit-гейтвеем (имя контейнера, volume, lifetime) — до анонса канала.
 
+> **Проход 1 ✅ ЗАКРЫТ (2026-07-12, mcp PR #63 `1f49180`):** честный SKILL.md — секция «What's
+> protected — and what isn't» (3 уровня: локальный ключ + консольный гейт on-chain / `sign_message`
+> plaintext не под гейтом / A3-край при docker-доступе), тезис §1.4 «prompt-injection can't move
+> funds» НЕ вписан (был бы overclaim: подпись обходит консоль — крукс, ADR core
+> `2026-07-11-signing-surface-vs-listing-claim.md` = вариант A, ядро не трогаем). F3 выкинут (rung 3
+> mobile, не консольная). Оба description синхронны, keyword «Ethereum» сохранён. **Проход 2
+> (install.sh/ps1 §1.5) — следующий круг.** Ops Капитана разблокированы: заливки ClawHub (веб) /
+> mcp-publisher (device-flow) / Smithery + каталожный title с keyword (поля во frontmatter нет).
+
 ### 1.4 ClawHub tui-листинг — в модели «агент ставит всё, человеку — один секретный шаг»
 Причина: доминирующий паттерн успеха на ClawHub — самоустановка руками агента (evm-wallet
 3.9k против наших 791); но лидеры платят за это ключами у агента. Мы забираем их UX,
