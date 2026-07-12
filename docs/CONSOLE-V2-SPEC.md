@@ -59,7 +59,7 @@
 
 | Новая socket-op | Отдаёт | Источник в core |
 |---|---|---|
-| `context` | **адрес кошелька (signer)**, allowed_chains, балансы | `wallet_context` (gateway/lib.rs:97) |
+| `context` | **адрес кошелька (signer)**, allowed_chains, балансы | ✅ **DONE 2026-07-12** (core#91 + console#9): `proto 2`, auth-гейт, `WalletService::wallet_context_data()` — общий источник для gRPC-роута `wallet_context` (gateway/lib.rs:230) и socket-op; новый error-код `wallet_locked`; канон — APPROVER-PROTOCOL.md §3.7 |
 | `positions` | Aave (collateral/debt/health/LTV), ERC-4626 (shares) | `positions` crate (`Protocol`, `Position`) |
 | `activity` | последние терминальные исходы (executed/denied/expired/failed + tx_hash) | retained-outcomes store (60 мин) + локальный лог консоли для истории глубже |
 
@@ -142,9 +142,18 @@ exec`); compose-канал для контейнерных агентов; мо�
 > Фазы 2 (реш. Капитана).
 
 ## 9. Открытые решения к ратификации (Гейт-1 соответствующих фаз)
-1. Балансы/позиции — только после `auth` (рекомендую) или до (как `list`)?
-2. Ручной Send — эволюция модели: делаем в Фазе 2, отдельным круксом (Receive — без крукса)?
+1. ✅ **РАТИФИЦИРОВАНО 2026-07-12 (Капитан):** балансы/позиции/активность — ТОЛЬКО после `auth`
+   (консоль и так открывается по PIN — единый гейт входа; протокол-док §2 фиксирует контраст с
+   pre-auth `list`/`get` явно).
+2. ✅ **РАТИФИЦИРОВАНО 2026-07-12 (Капитан):** ручной Send ПОЛНОСТЬЮ отложен — `/crucible`+ADR не
+   открываем даже параллельно (Receive без крукса остаётся в Фазе 2).
 3. QR для Receive — крейт `qrcode` (проверить лицензию/`cargo deny`) или ASCII-QR своими руками?
 4. Мотион From→To — возвращаем со счётчиком кадров или статично (рекомендую статично)?
-5. Порядок: Фаза 2 целиком, или сначала «резидентность + From→To» (нужен только `context`-op),
-   потом позиции/activity/swap отдельными подкругами (рекомендую дробить — меньше blast radius).
+5. ✅ **РАТИФИЦИРОВАНО 2026-07-12 (Капитан + Ревьюер):** дробим. Итоговый порядок (пересортировка
+   Ревьюера: Receive раньше Дашборда — зависит только от `context`+nav-shell, не от `positions`):
+   [core PR1 `context` ✅ DONE] → [console: резидентность+nav-shell+From→To] → [console: Receive] →
+   [core PR2 `positions`] → [console: Дашборд] → [core PR3 `activity`] → [console: Activity].
+   К Гейту-1 Этапа 2 (из /check + Ревьюер): замер blast radius «не выходим после решения» (не
+   переиспользовать цифру авто-открытия), экран PIN-lockout (`retry_after_s` + fail-closed очередь),
+   клиентская политика «фоновый poll read-ops не уходит в сокет при открытой карточке» (через
+   существующий `in_flight`-примитив, НЕ второе соединение — auth per-connection).
