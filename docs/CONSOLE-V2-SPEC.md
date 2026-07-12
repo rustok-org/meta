@@ -151,9 +151,11 @@ exec`); compose-канал для контейнерных агентов; мо�
 4. Мотион From→To — возвращаем со счётчиком кадров или статично (рекомендую статично)?
 5. ✅ **РАТИФИЦИРОВАНО 2026-07-12 (Капитан + Ревьюер):** дробим. Итоговый порядок (пересортировка
    Ревьюера: Receive раньше Дашборда — зависит только от `context`+nav-shell, не от `positions`):
-   [core PR1 `context` ✅ DONE] → [console: резидентность+nav-shell+From→To] → [console: Receive] →
+   [core PR1 `context` ✅ DONE] → [console: резидентность+From→To ✅ **DONE 2026-07-13**
+   (console#10 → `4efb062`): решение возвращает в очередь, decision stream на не-TTY stdout
+   (инвариант AGENTS.md #7 эволюционировал — ADR `console/.claude/decisions/2026-07-12-invariant-7-decision-stream.md`),
+   exit-коды сессии сохранили v0.1-значения, PIN-lockout-баннер, клиент proto 2; **nav-shell
+   осознанно перенесён в Этап Receive** — View-enum войдёт сразу с двумя реальными видами
+   (ратифицировано на Гейте-2); ⚠️ mcp/tests/e2e всё ещё ждёт one-shot exit-коды против пина
+   CONSOLE_IMAGE=v0.1.0 — обновить на релизном поезде §8] → [console: Receive] →
    [core PR2 `positions`] → [console: Дашборд] → [core PR3 `activity`] → [console: Activity].
-   К Гейту-1 Этапа 2 (из /check + Ревьюер): замер blast radius «не выходим после решения» (не
-   переиспользовать цифру авто-открытия), экран PIN-lockout (`retry_after_s` + fail-closed очередь),
-   клиентская политика «фоновый poll read-ops не уходит в сокет при открытой карточке» (через
-   существующий `in_flight`-примитив, НЕ второе соединение — auth per-connection).
