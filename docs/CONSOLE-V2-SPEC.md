@@ -169,4 +169,9 @@ exec`); compose-канал для контейнерных агентов; мо�
    fail-honest деградации (QR hidden по высоте И ширине, пустой адрес, overflow-банер);
    DoD закрыт целиком — живой скан QR Google-объективом 2026-07-13: байт-в-байт адрес,
    EIP-55 регистр сохранён (Captain-witnessed)] →
-   [core PR2 `positions`] → [console: Дашборд] → [core PR3 `activity`] → [console: Activity].
+   [core PR2 `positions` — Гейт-1 ✅ 2026-07-13, в кодинге] → [console: Дашборд — ⚠️ спека
+   Этапа 5 ОБЯЗАНА включить приоритет `list` над `positions`/`activity` в клиентском
+   шедулере (флаг Ревьюера, Гейт-1 core PR2: медленный positions-RPC на единственном
+   in-flight слоте заблокировал бы list — единственный источник знания о НОВОМ pending с
+   тикающим дедлайном; default-deny спасает деньги, но не доступность)] →
+   [core PR3 `activity`] → [console: Activity].
