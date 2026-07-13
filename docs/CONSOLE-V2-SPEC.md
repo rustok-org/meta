@@ -60,7 +60,7 @@
 | Новая socket-op | Отдаёт | Источник в core |
 |---|---|---|
 | `context` | **адрес кошелька (signer)**, allowed_chains, балансы | ✅ **DONE 2026-07-12** (core#91 + console#9): `proto 2`, auth-гейт, `WalletService::wallet_context_data()` — общий источник для gRPC-роута `wallet_context` (gateway/lib.rs:230) и socket-op; новый error-код `wallet_locked`; канон — APPROVER-PROTOCOL.md §3.7 |
-| `positions` | Aave (collateral/debt/health/LTV), ERC-4626 (shares) | `positions` crate (`Protocol`, `Position`) |
+| `positions` | Aave (collateral/debt/health/LTV), ERC-4626 (shares) | ✅ **DONE 2026-07-13** (core#92 + console#12): `WalletService::positions_for()` — общий с gRPC `get_positions`; канон §3.8 |
 | `activity` | последние терминальные исходы (executed/denied/expired/failed + tx_hash) | retained-outcomes store (60 мин) + локальный лог консоли для истории глубже |
 
 **`context.address` разблокирует двух-блочный From→To** — сегодня адреса отправителя в протоколе нет,
@@ -169,7 +169,12 @@ exec`); compose-канал для контейнерных агентов; мо�
    fail-honest деградации (QR hidden по высоте И ширине, пустой адрес, overflow-банер);
    DoD закрыт целиком — живой скан QR Google-объективом 2026-07-13: байт-в-байт адрес,
    EIP-55 регистр сохранён (Captain-witnessed)] →
-   [core PR2 `positions` — Гейт-1 ✅ 2026-07-13, в кодинге] → [console: Дашборд — ⚠️ спека
+   [core PR2 `positions` ✅ **DONE 2026-07-13** (core#92 `a505fe1` + канон console#12
+   `802347d`, пара core-первым): op-зеркало context (auth+proto-гейт, wallet_locked),
+   shared `positions_for()` (gRPC-путь переведён без изменения поведения), wire =
+   Position 1:1 через шов `position_json` + тесты маппинга на реальных данных ОБОИХ
+   путей; канон §3.8 + §3.9 activity-reserved (PR3 без ренумбера), таблицы →
+   §3.10/§3.11] → [console: Дашборд — ⚠️ спека
    Этапа 5 ОБЯЗАНА включить приоритет `list` над `positions`/`activity` в клиентском
    шедулере (флаг Ревьюера, Гейт-1 core PR2: медленный positions-RPC на единственном
    in-flight слоте заблокировал бы list — единственный источник знания о НОВОМ pending с
