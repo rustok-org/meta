@@ -36,12 +36,12 @@
 | Вид | Назначение | Данные | Статус |
 |---|---|---|---|
 | **Locked / Unlock** | PIN-вход | — | ✅ есть (тематизировать доп.) |
-| **Dashboard** | баланс · позиции · «waiting for you» · активность | context + positions + activity | НОВОЕ (Фаза 2) |
+| **Dashboard** | баланс · позиции · «waiting for you» · активность | context + positions + activity | ✅ DONE 2026-07-14 (console#13) — activity-строка на дашборде = бэклог-мини-круг (ратиф. Гейт-1 Этапа 7) |
 | **Approve · send** | карточка одобрения перевода, два-блочный From→To | get + context(адрес отправителя) | карточка есть; From→To — Фаза 2 |
 | **Approve · swap** | своп-карта (You pay → You receive, курс/слиппедж/route) | get + swap-декод | Фаза 2 (нужен core-декод) |
 | **Approve · high-risk** | unlimited-approve: HIGH RISK + PIN (+ чекбокс?) | get | карточка есть; чекбокс — issue console#6 |
 | **Receive** | адрес + QR | context(адрес) | НОВОЕ (Фаза 2, чистый дисплей) |
-| **Activity / History** | список решений с фильтрами | локальный лог + retained outcomes | НОВОЕ (Фаза 2) |
+| **Activity / History** | список решений с фильтрами | локальный лог + retained outcomes | ✅ DONE 2026-07-14 (console#15) |
 | **Executing / Resolved** | «signing… / executed 0x… / FAILED» | resolve | есть (тематизировать) |
 | **Send (manual)** | человек сам инициирует перевод | origination-op | КРУКС (см. §7) |
 
@@ -192,4 +192,17 @@ exec`); compose-канал для контейнерных агентов; мо�
    через `state_word`; wire: id/state/tx_hash(executed)/reason(failed)/age_secs — отсутствие
    поля, не null; канон §3.9 заполнен В резерв без ренумбера + §3.11 дополнен
    (unauthorized/protocol_error перечисляют positions+activity)] →
-   [console: Activity — Этап 7, ПОСЛЕДНИЙ Фазы 2].
+   [console: Activity ✅ **DONE 2026-07-14** (console#15 `ad437ad`) — **ФАЗА 2 ЗАКРЫТА
+   ЦЕЛИКОМ (7/7)**: вид Activity (`h`, фильтр `f`) + клиент §3.9 (`OutcomeState` без
+   `pending` — валит парс) + activity на list-first слоте (Dashboard-чередование не
+   тронуто) + локальный JSONL-журнал на `$RUSTOK_DATA_DIR` (rich-запись в момент решения
+   из живой карточки; server-исходы `arrival − age`; field-merge дубликатов через единый
+   шов — Гейт-2 БЛОКЕР: unix-штампы из разных формул несравнимы; sidecar-лок писателей,
+   0600, периодическая компакция) + `short_addr` только в этом списке (§4.1);
+   decision-line ADR #7 нетронута. Гейт-2: 2 БЛОКЕРа (найдены и закрыты с true-red),
+   смоук 11/11 вкл. перезапуск с подхватом истории. Хвосты решением Капитана:
+   same-uid-целостность журнала (0600 сделан, вопрос отложен осознанно) ·
+   Activity-строка на Dashboard — мини-круг после].
+
+**Фаза 2 завершена → NEXT = релизный поезд §8** (редизайн доезжает до пользователя
+только после него; шаг 3 — mcp e2e на новые exit-коды ADR #7 — обязателен до пина).
