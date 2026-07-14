@@ -61,7 +61,7 @@
 |---|---|---|
 | `context` | **адрес кошелька (signer)**, allowed_chains, балансы | ✅ **DONE 2026-07-12** (core#91 + console#9): `proto 2`, auth-гейт, `WalletService::wallet_context_data()` — общий источник для gRPC-роута `wallet_context` (gateway/lib.rs:230) и socket-op; новый error-код `wallet_locked`; канон — APPROVER-PROTOCOL.md §3.7 |
 | `positions` | Aave (collateral/debt/health/LTV), ERC-4626 (shares) | ✅ **DONE 2026-07-13** (core#92 + console#12): `WalletService::positions_for()` — общий с gRPC `get_positions`; канон §3.8 |
-| `activity` | последние терминальные исходы (executed/denied/expired/failed + tx_hash) | retained-outcomes store (60 мин) + локальный лог консоли для истории глубже |
+| `activity` | последние терминальные исходы (executed/denied/expired/failed + tx_hash) | ✅ **DONE 2026-07-14** (core#93 + console#14): `PendingStore::recent_outcomes(cap)` — retained-окно 60 мин, сортировка по сырому Instant, кап 100; канон §3.9. Локальный лог консоли для истории глубже — Этап 7 |
 
 **`context.address` разблокирует двух-блочный From→To** — сегодня адреса отправителя в протоколе нет,
 это и была причина отложить From→To из Фазы 1.
@@ -183,4 +183,13 @@ exec`); compose-канал для контейнерных агентов; мо�
    выкидывает), overflow-бюджет позиций честным счётчиком (блокер Гейта-2 — двойное
    вычитание шапки — закрыт с red-proof на точной границе); адресов активов на дашборде
    нет (ратиф.)] →
-   [core PR3 `activity`] → [console: Activity].
+   [core PR3 `activity` ✅ **DONE 2026-07-14** (core#93 `dd72cbd` + канон console#14
+   `1b7a16e`, пара core-первым): op-зеркало context/positions (auth+proto-гейт, БЕЗ
+   `wallet_locked` — op не трогает keyring), новый `PendingStore::recent_outcomes(cap)` —
+   сортировка по сырому resolve-Instant ДО усечения (Гейт-2 БЛОКЕР: age_secs-ключ ронял
+   суб-секундные резолвы в uuid-лотерею — ровно lockout-лавина; true-red regression на двух
+   реальных deny), кап 100 в store вне лока, шов `outcomes_json` = чистый verbatim-маппинг
+   через `state_word`; wire: id/state/tx_hash(executed)/reason(failed)/age_secs — отсутствие
+   поля, не null; канон §3.9 заполнен В резерв без ренумбера + §3.11 дополнен
+   (unauthorized/protocol_error перечисляют positions+activity)] →
+   [console: Activity — Этап 7, ПОСЛЕДНИЙ Фазы 2].
