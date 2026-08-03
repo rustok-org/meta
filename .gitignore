@@ -3,8 +3,10 @@
 .env.*
 !.env.example
 
-# Workflow artifacts
-.claude/reports/
+# Workflow artifacts — the whole directory, not selected parts of it. These are
+# internal working notes, written for us rather than for a reader of this
+# repository, and they are kept outside the published tree.
+.claude/
 .review.diff
 
 # General
