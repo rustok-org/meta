@@ -168,7 +168,7 @@ exec`); compose-канал для контейнерных агентов; мо�
    Ревьюера: Receive раньше Дашборда — зависит только от `context`+nav-shell, не от `positions`):
    [core PR1 `context` ✅ DONE] → [console: резидентность+From→To ✅ **DONE 2026-07-13**
    (console#10 → `4efb062`): решение возвращает в очередь, decision stream на не-TTY stdout
-   (инвариант AGENTS.md #7 эволюционировал — ADR `console/.claude/decisions/2026-07-12-invariant-7-decision-stream.md`),
+   (инвариант AGENTS.md #7 эволюционировал — см. внутренний ADR о decision stream),
    exit-коды сессии сохранили v0.1-значения, PIN-lockout-баннер, клиент proto 2; **nav-shell
    осознанно перенесён в Этап Receive** — View-enum войдёт сразу с двумя реальными видами
    (ратифицировано на Гейте-2); ⚠️ mcp/tests/e2e всё ещё ждёт one-shot exit-коды против пина
