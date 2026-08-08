@@ -124,7 +124,7 @@ skill-v0.5.0    ❌ отсутствует   (конвенция: skill-v0.4.9, 
 
 ### 2.5 ✅ ЗАКРЫТО — страж пинов шима не работал в CI и не мог
 
-`tests/test_installer_pins.py::test_the_pinned_shim_is_the_shim_in_this_tree` сверяет
+`tests/test_installer_pins.py::test_the_pinned_shim_hash_is_the_shim_in_this_tree` *(имя сверено с файлом 2026-08-08; в исходной записи было без `_hash`)* сверяет
 `cli/rustok` в дереве с тем, что лежит в коммите `SHIM_COMMIT`. Поставлен 2026-08-04 со
 словами «забыть станет невозможно».
 
@@ -260,6 +260,10 @@ https://raw.githubusercontent.com/rustok-org/mcp/wallet-tui-v0.8.3/scripts/insta
   тестировать. Отстанет — e2e молча прогонится против прошлого релиза и будет **зелёным**. Не
   самосторожащий; либо страж на него, либо брать образ из `pyproject.toml`.
 
+  **ЗАКРЫТО, перемерено 2026-08-08:** выбран второй способ — `tests/e2e/conftest.py:33` теперь
+  `DEFAULT_IMAGE = f"…rustok-wallet-tui:v{_manifest_version()}"`, то есть берётся из манифеста и
+  отстать не может. Пункт 21 таблицы §4 больше не дыра.
+
 ### Агентская линия — мало, и это осознанно
 
 Пакет, `claw.json`, frontmatter `SKILL.md` — и всё. Ни доки, ни установщик, ни `SKILL.md` не
@@ -274,7 +278,24 @@ https://raw.githubusercontent.com/rustok-org/mcp/wallet-tui-v0.8.3/scripts/insta
 
 ---
 
-## 5. Состояние GHCR на 2026-08-04
+## 5. Состояние GHCR
+
+### Выпуск 0.9.0 — 2026-08-08 (консольная линия)
+
+```
+rustok-core        v0.4.0, v0.4, v0, latest → sha256:a3a448a2…
+rustok-console     v0.3.0, v0.3, v0, latest → sha256:e6a5f321…
+rustok-wallet-tui  v0.9.0, v0.9, v0         → sha256:b345318c…  (подпись cosign проверена)
+                   v0.8.5, v0.8             → sha256:47b074f3…  (прежний, остаётся рабочим)
+```
+
+Git-теги: `core v0.4.0`, `console v0.3.0`, `mcp wallet-tui-v0.9.0` — все аннотированные.
+Подпись проверена вживую против личности, которую пинит установщик
+(`wallet-publish.yml@refs/heads/main`, issuer `token.actions.githubusercontent.com`).
+Приёмка: консоль, извлечённая **из опубликованного образа**, рапортует `console v0.3.0`
+и проходит смоук 8/8.
+
+### Состояние GHCR на 2026-08-04
 
 ```
 rustok-core       v0.1.5, v0.1 → 1aadb2ac    v0.1.4 → 6dbed391
