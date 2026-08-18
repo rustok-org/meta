@@ -48,12 +48,14 @@ seam spans **TS glue ↔ gateway ↔ core gRPC**, and it must have exactly one r
      in Slice-1b — see the O1-a bullet below) + server-side SSE capability restriction; see
      [CREDENTIAL-LADDER.md](./CREDENTIAL-LADDER.md) "O1"). *(This retraction is the "O2" reconciliation.)*
   2. the MCP exposes only **`request_swap(intent)`** — never `sign(hashes)`, never a direct gRPC
-     sign-client — **DESIGN-LOCKED, NOT YET LIVE.** `request_swap` does not exist in `mcp/src` yet, and
-     `sign_message` is still exposed as a tool (`mcp handlers.py:285`) with capability `EXECUTE_TX`
-     (`mcp capabilities.py:30`). Lands in **Slice 2c** (`request_swap`-only + the eip712-enum drop).
+     sign-client — **DESIGN-LOCKED, NOT YET LIVE.** `request_swap` does not exist in `mcp/src` yet.
+     The `sign_message` tool **was removed from the MCP surface on 2026-08-18**: the core
+     returns `Deny` for `SignMessage` in every mode, so the tool could only ever fail, and its
+     description taught an agent to use a capability that is not there. What is left for **Slice 2c**
+     is `request_swap` itself.
   3. the **dead `eip712` branch** in the gateway's `sign_message` is **removed** — **DONE (gateway):**
-     shipped in Slice 2a (`core` #71, main `5dfc845`). The MCP **`eip712`-enum drop** (the tool schema
-     still advertising `eip712`) is **pending Slice 2c**.
+     shipped in Slice 2a (`core` #71, main `5dfc845`). The MCP **`eip712`-enum drop** is **DONE by
+     removal (2026-08-18)** — the schema that advertised `eip712` went with the tool.
 
 - **On-chain execute-approval code-gate (O1-a) — CODE-LANDED in Slice-1, fail-closed-DISABLED.** The core
   arbitrary-transaction handle (`PreviewTransaction` / `ExecuteTransaction`, Slice-1 — `core` #72)
